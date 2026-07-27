@@ -2,14 +2,18 @@
 
 import { useState } from 'react'
 
-export default function CasesSearch() {
-  const [search, setSearch] = useState('')
+interface Props {
+  search: string
+  onSearchChange: (value: string) => void
+}
+
+export default function CasesSearch({ search, onSearchChange }: Props) {
   const [court, setCourt] = useState('All Courts')
   const [status, setStatus] = useState('All Status')
   const [practice, setPractice] = useState('All Practice Areas')
 
   const clearFilters = () => {
-    setSearch('')
+    onSearchChange('')
     setCourt('All Courts')
     setStatus('All Status')
     setPractice('All Practice Areas')
@@ -23,7 +27,7 @@ export default function CasesSearch() {
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search cases by client name, case number, advocate..."
             style={inputStyle}
           />
@@ -125,7 +129,6 @@ const selectStyle: React.CSSProperties = {
 const clearButton: React.CSSProperties = {
   height: 38,
   padding: '0 16px',
-  border: 'none',
   borderRadius: 10,
   background: 'rgba(239, 68, 68, 0.1)',
   color: '#dc2626',

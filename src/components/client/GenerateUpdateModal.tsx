@@ -4,15 +4,27 @@ import { useState } from 'react'
 
 interface Props {
   onClose: () => void
+  onGenerate: (tone: string, language: string) => Promise<void>
 }
 
 export default function GenerateUpdateModal({
   onClose,
+  onGenerate,
 }: Props) {
   const [language, setLanguage] = useState('Hinglish')
   const [tone, setTone] = useState('Reassuring')
   const [length, setLength] = useState('Medium')
   const [notes, setNotes] = useState('')
+  const [generating, setGenerating] = useState(false)
+
+  async function handleGenerate() {
+    setGenerating(true)
+    try {
+      await onGenerate(tone, language)
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   return (
     <div
@@ -222,9 +234,11 @@ export default function GenerateUpdateModal({
           </button>
 
           <button
-            style={generateButton}
+            onClick={handleGenerate}
+            disabled={generating}
+            style={{ ...generateButton, opacity: generating ? 0.7 : 1, cursor: generating ? 'not-allowed' : 'pointer' }}
           >
-            ✨ Generate AI Update
+            {generating ? '✨ Generating...' : '✨ Generate AI Update'}
           </button>
         </div>
       </div>

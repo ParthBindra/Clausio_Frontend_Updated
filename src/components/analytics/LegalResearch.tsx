@@ -1,6 +1,9 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
+import { useCaseStore } from '@/lib/store'
+import { aiApi, parseAiJson } from '@/lib/api'
+import type { Judgment } from '@/types/AIResponse'
 
 const stats = [
   {
@@ -30,6 +33,29 @@ const stats = [
 ]
 
 export default function LegalResearch() {
+  const { selectedCaseId } = useCaseStore()
+  const [query,     setQuery]     = useState('')
+  const [judgments, setJudgments] = useState<Judgment[] | null>(null)
+  const [rawText,   setRawText]   = useState('')
+  const [loading,   setLoading]   = useState(false)
+  const [error,     setError]     = useState('')
+
+  async function runResearch() {
+    if (!selectedCaseId) { setError('Select a case first.'); return }
+    setLoading(true)
+    setError('')
+    try {
+      const res = await aiApi.getLegalResearch(selectedCaseId)
+      const parsed = parseAiJson<Judgment[]>(res.result)
+      setJudgments(parsed)
+      setRawText(parsed ? '' : res.result)
+    } catch (err: any) {
+      setError(err.message || 'Failed to run research')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div>
 
@@ -68,13 +94,15 @@ export default function LegalResearch() {
         </div>
 
         <button
+          onClick={runResearch}
+          disabled={loading}
           style={{
             border: 'none',
-            background: '#3b82f6',
+            background: loading ? '#93c5fd' : '#3b82f6',
             color: '#fff',
             borderRadius: 10,
             padding: '12px 20px',
-            cursor: 'pointer',
+            cursor: loading ? 'not-allowed' : 'pointer',
             fontWeight: 600,
           }}
         >
@@ -84,9 +112,15 @@ export default function LegalResearch() {
               marginRight: 8,
             }}
           />
-          AI Research
+          {loading ? 'Researching...' : 'AI Research'}
         </button>
       </div>
+
+      {error && (
+        <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 20 }}>
+          {error}
+        </div>
+      )}
 
       {/* ================= AI SEARCH ================= */}
 
@@ -117,6 +151,8 @@ export default function LegalResearch() {
           }}
         >
           <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
             placeholder="Ask anything... e.g. Interim maintenance judgments after Rajnesh v. Neha"
             style={inputStyle}
           />
@@ -138,17 +174,19 @@ export default function LegalResearch() {
           </select>
 
           <button
+            onClick={runResearch}
+            disabled={loading}
             style={{
               border: 'none',
-              background: '#3b82f6',
+              background: loading ? '#93c5fd' : '#3b82f6',
               color: '#fff',
               borderRadius: 10,
               padding: '0 24px',
-              cursor: 'pointer',
+              cursor: loading ? 'not-allowed' : 'pointer',
               fontWeight: 600,
             }}
           >
-            Search
+            {loading ? '...' : 'Search'}
           </button>
         </div>
       </div>
@@ -315,26 +353,25 @@ export default function LegalResearch() {
             overflow: 'hidden',
           }}
         >
-          <ResearchResult
-            title="Rajnesh v. Neha (2021)"
-            court="Supreme Court"
-            relevance="98%"
-            summary="Comprehensive guidelines regarding maintenance, disclosure of income and standardisation."
-          />
+          {loading && <div style={{ padding: 22, fontSize: 13, color: '#64748b' }}>Searching judgments...</div>}
 
-          <ResearchResult
-            title="Shamima Farooqui v. Shahid Khan"
-            court="Supreme Court"
-            relevance="95%"
-            summary="Maintenance should enable the wife to live with dignity and not merely survive."
-          />
+          {!loading && !judgments && !rawText && (
+            <div style={{ padding: 22, fontSize: 13, color: '#94a3b8' }}>Click AI Research to search relevant judgments for the selected case.</div>
+          )}
 
-          <ResearchResult
-            title="Kalyan Dey Chowdhury v. Rita Dey"
-            court="Supreme Court"
-            relevance="91%"
-            summary="Discusses reasonable maintenance considering income and liabilities."
-          />
+          {!loading && !judgments && rawText && (
+            <div style={{ padding: 22, fontSize: 13, color: '#334155', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{rawText}</div>
+          )}
+
+          {!loading && judgments && judgments.map((j, i) => (
+            <ResearchResult
+              key={i}
+              title={j.citation}
+              court={`${j.court} · ${j.year}`}
+              relevance={j.strength === 'High' ? '96%' : j.strength === 'Medium' ? '78%' : '60%'}
+              summary={j.ratioDecidendi}
+            />
+          ))}
         </div>
       </div>
 

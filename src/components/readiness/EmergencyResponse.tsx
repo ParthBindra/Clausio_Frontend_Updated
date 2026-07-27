@@ -1,11 +1,40 @@
 'use client'
 
 import { useState } from 'react'
+import { useCaseStore } from '@/lib/store'
+import { aiApi } from '@/lib/api'
+
+const SUGGESTIONS = [
+  'Urgent Custody',
+  'Stay Order',
+  'Interim Maintenance',
+  'Passport Issue',
+  'Domestic Violence',
+  'Evidence Objection',
+]
 
 export default function EmergencyResponse() {
-  const [query, setQuery] = useState(
-    'Opposing counsel filed urgent application for interim custody of child...'
-  )
+  const { selectedCaseId } = useCaseStore()
+  const [query,      setQuery]      = useState('')
+  const [response,   setResponse]   = useState('')
+  const [generating, setGenerating] = useState(false)
+  const [error,      setError]      = useState('')
+
+  async function handleGenerate() {
+    if (!selectedCaseId) { setError('Select a case first.'); return }
+    if (!query.trim()) { setError('Describe the emergency situation first.'); return }
+    setGenerating(true)
+    setError('')
+    setResponse('')
+    try {
+      const res = await aiApi.getEmergency(selectedCaseId, { query })
+      setResponse(res.result)
+    } catch (err: any) {
+      setError(err.message || 'Failed to generate emergency response')
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   return (
     <div
@@ -27,51 +56,19 @@ export default function EmergencyResponse() {
           borderBottom: '1px solid rgba(239, 68, 68, 0.1)',
         }}
       >
-        <div
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 10,
-            background: '#dc2626',
-            color: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
+        <div style={{ width: 32, height: 32, borderRadius: 10, background: '#dc2626', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <i className="ti ti-alert-triangle" />
         </div>
 
         <div>
-          <div
-            style={{
-              fontWeight: 600,
-              color: '#991b1b',
-              fontSize: 14,
-            }}
-          >
-            Emergency Response
-          </div>
-
-          <div
-            style={{
-              color: '#7f1d1d',
-              fontSize: 12,
-              marginTop: 2,
-            }}
-          >
-            Generate an immediate legal response for urgent situations.
-          </div>
+          <div style={{ fontWeight: 600, color: '#991b1b', fontSize: 14 }}>Emergency Response</div>
+          <div style={{ color: '#7f1d1d', fontSize: 12, marginTop: 2 }}>Generate an immediate legal response for urgent situations.</div>
         </div>
       </div>
 
       {/* Body */}
 
-      <div
-        style={{
-          padding: 16,
-        }}
-      >
+      <div style={{ padding: 16 }}>
         <textarea
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -94,28 +91,12 @@ export default function EmergencyResponse() {
 
         {/* Quick Suggestions */}
 
-        <div
-          style={{
-            marginTop: 12,
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 8,
-            }}
-          >
-            {[
-              'Urgent Custody',
-              'Stay Order',
-              'Interim Maintenance',
-              'Passport Issue',
-              'Domestic Violence',
-              'Evidence Objection',
-            ].map((item) => (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {SUGGESTIONS.map((item) => (
               <button
                 key={item}
+                onClick={() => setQuery(item)}
                 style={{
                   padding: '6px 12px',
                   borderRadius: 999,
@@ -133,37 +114,43 @@ export default function EmergencyResponse() {
           </div>
         </div>
 
-        {/* AI Notice */}
+        {error && (
+          <div style={{ marginTop: 12, padding: 12, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, color: '#dc2626', fontSize: 12 }}>
+            {error}
+          </div>
+        )}
 
-        <div
-          style={{
-            marginTop: 12,
-            padding: 12,
-            background: 'rgba(59, 130, 246, 0.05)',
-            border: '1px solid rgba(59, 130, 246, 0.1)',
-            borderRadius: 10,
-            color: '#1e40af',
-            fontSize: 12,
-            lineHeight: 1.5,
-          }}
-        >
-          <strong>AI Notice:</strong> Clausio will prepare an emergency
-          response, identify relevant provisions, suggest supporting
-          judgments and generate a ready-to-file draft within seconds.
-        </div>
+        {response && (
+          <div style={{ marginTop: 12, padding: 12, background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, color: '#14532d', fontSize: 12, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+            {response}
+          </div>
+        )}
+
+        {!response && (
+          <div
+            style={{
+              marginTop: 12,
+              padding: 12,
+              background: 'rgba(59, 130, 246, 0.05)',
+              border: '1px solid rgba(59, 130, 246, 0.1)',
+              borderRadius: 10,
+              color: '#1e40af',
+              fontSize: 12,
+              lineHeight: 1.5,
+            }}
+          >
+            <strong>AI Notice:</strong> Clausio will prepare an emergency
+            response, identify relevant provisions, suggest supporting
+            judgments and generate a ready-to-file draft within seconds.
+          </div>
+        )}
 
         {/* Buttons */}
 
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: 10,
-            marginTop: 16,
-          }}
-        >
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
           <button
             className="glass-button"
+            onClick={() => { setQuery(''); setResponse(''); setError('') }}
             style={{
               padding: '0 16px',
               height: 36,
@@ -181,14 +168,16 @@ export default function EmergencyResponse() {
 
           <button
             className="glass-button"
+            onClick={handleGenerate}
+            disabled={generating}
             style={{
               padding: '0 16px',
               height: 36,
               borderRadius: 8,
               border: 'none',
-              background: '#dc2626',
+              background: generating ? '#f87171' : '#dc2626',
               color: '#fff',
-              cursor: 'pointer',
+              cursor: generating ? 'not-allowed' : 'pointer',
               fontWeight: 600,
               fontSize: 12,
               display: 'flex',
@@ -196,11 +185,8 @@ export default function EmergencyResponse() {
               boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)'
             }}
           >
-            <i
-              className="ti ti-bolt"
-              style={{ marginRight: 6 }}
-            />
-            Generate Response
+            <i className="ti ti-bolt" style={{ marginRight: 6 }} />
+            {generating ? 'Generating...' : 'Generate Response'}
           </button>
         </div>
       </div>

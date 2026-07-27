@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 
-import SettingsSidebar from '@/components/settings/ SettingsSidebar'
+import SettingsSidebar from '@/components/settings/SettingsSidebar'
 
-import ProfileSettings from '@/components/settings/ ProfileSettings'
+import ProfileSettings from '@/components/settings/ProfileSettings'
 import AISettings from '@/components/settings/AISettings'
 import LegalSettings from '@/components/settings/LegalSettings'
 import WorkspaceSettings from '@/components/settings/WorkspaceSettings'
@@ -97,25 +97,6 @@ export default function SettingsPage() {
             Manage your account, workspace and AI preferences.
           </p>
         </div>
-
-        <button
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            border: 'none',
-            borderRadius: 10,
-            background: '#2563eb',
-            color: '#fff',
-            padding: '11px 18px',
-            cursor: 'pointer',
-            fontWeight: 600,
-            fontSize: 14,
-          }}
-        >
-          <i className="ti ti-device-floppy" />
-          Save Changes
-        </button>
       </div>
 
       {/* ================= BODY ================= */}

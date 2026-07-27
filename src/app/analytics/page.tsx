@@ -18,6 +18,7 @@ import AIAutomation from '@/components/analytics/AIAutomation'
 export default function AnalyticsPage() {
 
   const [activeTab, setActiveTab] = useState('AI Chat')
+  const [chatKey,   setChatKey]   = useState(0)
 
   return (
     <div className="glass-panel" style={{ flex: 1, overflowY: 'auto', margin: '16px', padding: 20, borderRadius: 24 }}>
@@ -47,6 +48,7 @@ export default function AnalyticsPage() {
 
           <button
             className="glass-button"
+            onClick={() => { setChatKey(k => k + 1); setActiveTab('AI Chat') }}
             style={{ height: 38, padding: '0 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}
           >
             <i className="ti ti-message-chatbot" />
@@ -69,7 +71,7 @@ export default function AnalyticsPage() {
           marginTop: 24,
         }}
       >
-        {activeTab === 'AI Chat' && <AIChat />}
+        {activeTab === 'AI Chat' && <AIChat key={chatKey} />}
 
         {activeTab === 'Legal Research' && (
           <LegalResearch />

@@ -1,12 +1,22 @@
-// 4 metric cards at the top of the dashboard
-const METRICS = [
-  { value: '14',  label: 'Hearing entries', trend: 'Next in 6 days', tClr: '#10b981', top: '#10b981' },
-  { value: '8',   label: 'Evidence items',  trend: '3 docs missing',  tClr: '#f59e0b', top: '#3b82f6' },
-  { value: '72%', label: 'Case readiness',  trend: '+8% this week',   tClr: '#10b981', top: '#f59e0b' },
-  { value: '2',   label: 'Overdue items',   trend: 'Act now',         tClr: '#ef4444', top: '#ef4444' },
-]
+// 4 metric cards at the top of the dashboard — real counts for the selected case
+interface Props {
+  hearings: any[]
+  documents: any[]
+  caseData: any
+  overdueCount: number
+}
 
-export default function MetricsRow() {
+export default function MetricsRow({ hearings, documents, caseData, overdueCount }: Props) {
+  const missingDocs = documents.filter(d => d.status === 'Missing').length
+  const readiness   = caseData?.readinessScore ?? 0
+
+  const METRICS = [
+    { value: hearings.length.toString(), label: 'Hearing entries', trend: hearings.length > 0 ? 'Recorded' : 'None yet', tClr: '#10b981', top: '#10b981' },
+    { value: documents.length.toString(), label: 'Evidence items',  trend: missingDocs > 0 ? `${missingDocs} docs missing` : 'All present', tClr: missingDocs > 0 ? '#f59e0b' : '#10b981', top: '#3b82f6' },
+    { value: `${readiness}%`, label: 'Case readiness',  trend: 'Current score',   tClr: '#10b981', top: '#f59e0b' },
+    { value: overdueCount.toString(), label: 'Overdue items',   trend: overdueCount > 0 ? 'Act now' : 'All clear', tClr: overdueCount > 0 ? '#ef4444' : '#10b981', top: '#ef4444' },
+  ]
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
       {METRICS.map((m, i) => (

@@ -2,24 +2,29 @@
 
 import { useState } from 'react'
 
-import HearingForm from '@/components/hearings/HearingForm'
+import HearingForm    from '@/components/hearings/HearingForm'
 import HearingHistory from '@/components/hearings/HearingHistory'
 import AddHearingModal from '@/components/hearings/AddHearingModal'
-import HearingTabs from '@/components/hearings/HearingTabs'
+import HearingTabs    from '@/components/hearings/HearingTabs'
 import DeadlineBanner from '@/components/hearings/DeadlineBanner'
 
 export default function HearingsPage() {
   const [showAddModal, setShowAddModal] = useState(false)
+  const [activeTab,    setActiveTab]    = useState('Hearing Diary')
 
-  const [activeTab, setActiveTab] = useState('Hearing Diary')
+  // ✅ NEW: refresh counter — increment to reload HearingHistory
+  const [refreshCount, setRefreshCount] = useState(0)
+
+  function handleSaved() {
+    setRefreshCount(c => c + 1)
+  }
 
   return (
     <>
       <div className="glass-panel" style={{ flex: 1, overflowY: 'auto', margin: '16px', padding: 20, borderRadius: 24 }}>
-        {/* ================= HEADER ================= */}
 
+        {/* HEADER — UNCHANGED */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          {/* Left */}
           <div>
             <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>
               Hearings
@@ -28,8 +33,6 @@ export default function HearingsPage() {
               Hearing diary, preparation and witness intelligence
             </p>
           </div>
-
-          {/* Right */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ padding: '4px 10px', borderRadius: 999, background: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', fontWeight: 600, fontSize: 11, border: '1px solid rgba(59, 130, 246, 0.2)' }}>
               Family & Matrimonial
@@ -41,33 +44,28 @@ export default function HearingsPage() {
           </div>
         </div>
 
-        {/* ================= TABS ================= */}
+        {/* TABS — UNCHANGED */}
         <HearingTabs activeTab={activeTab} onChange={setActiveTab} />
 
-        {/* ================= DEADLINE ================= */}
+        {/* DEADLINE BANNER — now shows real overdue count */}
         <div style={{ marginTop: 16 }}>
           <DeadlineBanner />
         </div>
 
-        {/* ================= PAGE CONTENT ================= */}
+        {/* PAGE CONTENT — UNCHANGED */}
         <div style={{ marginTop: 16 }}>
-                    {/* ================= HEARING DIARY ================= */}
 
+          {/* HEARING DIARY TAB */}
           {activeTab === 'Hearing Diary' && (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '42% 58%',
-                gap: 24,
-              }}
-            >
-              <HearingForm />
-
-              <HearingHistory />
+            <div style={{ display: 'grid', gridTemplateColumns: '42% 58%', gap: 24 }}>
+              {/* ✅ onSaved refreshes HearingHistory */}
+              <HearingForm onSaved={handleSaved} />
+              {/* ✅ refresh prop reloads when new hearing saved */}
+              <HearingHistory refresh={refreshCount} />
             </div>
           )}
 
-          {/* ================= PREP BRIEF ================= */}
+          {/* PREP BRIEF TAB — UNCHANGED */}
           {activeTab === 'Prep Brief' && (
             <div className="glass-card" style={{ padding: 20 }}>
               <h2 style={{ margin: 0, fontSize: 18, color: '#0f172a', marginBottom: 8, fontWeight: 700 }}>
@@ -76,22 +74,15 @@ export default function HearingsPage() {
               <p style={{ color: '#64748b', marginBottom: 20, fontSize: 13 }}>
                 AI generated preparation notes before the next hearing.
               </p>
-
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div style={{ background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.1)', borderRadius: 12, padding: 16 }}>
                   <h3 style={{ marginTop: 0, fontSize: 14, color: '#1d4ed8' }}>Today's Objective</h3>
-                  <p style={{ fontSize: 13, color: '#334155' }}>
-                    Secure interim maintenance order and oppose adjournment.
-                  </p>
+                  <p style={{ fontSize: 13, color: '#334155' }}>Secure interim maintenance order and oppose adjournment.</p>
                 </div>
-
                 <div style={{ background: 'rgba(234, 179, 8, 0.05)', border: '1px solid rgba(234, 179, 8, 0.1)', borderRadius: 12, padding: 16 }}>
                   <h3 style={{ marginTop: 0, fontSize: 14, color: '#a16207' }}>Judge Notes</h3>
-                  <p style={{ fontSize: 13, color: '#334155' }}>
-                    Previous warning issued to respondent regarding delay.
-                  </p>
+                  <p style={{ fontSize: 13, color: '#334155' }}>Previous warning issued to respondent regarding delay.</p>
                 </div>
-
                 <div style={{ background: 'rgba(34, 197, 94, 0.05)', border: '1px solid rgba(34, 197, 94, 0.1)', borderRadius: 12, padding: 16 }}>
                   <h3 style={{ marginTop: 0, fontSize: 14, color: '#15803d' }}>Arguments</h3>
                   <ul style={{ fontSize: 13, color: '#334155', margin: 0, paddingLeft: 20 }}>
@@ -100,7 +91,6 @@ export default function HearingsPage() {
                     <li>Delay tactics by respondent.</li>
                   </ul>
                 </div>
-
                 <div style={{ background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.1)', borderRadius: 12, padding: 16 }}>
                   <h3 style={{ marginTop: 0, fontSize: 14, color: '#b91c1c' }}>Documents Required</h3>
                   <ul style={{ fontSize: 13, color: '#334155', margin: 0, paddingLeft: 20 }}>
@@ -113,7 +103,7 @@ export default function HearingsPage() {
             </div>
           )}
 
-          {/* ================= WITNESS INTELLIGENCE ================= */}
+          {/* WITNESS INTELLIGENCE TAB — UNCHANGED */}
           {activeTab === 'Witness Intelligence' && (
             <div className="glass-card" style={{ padding: 20 }}>
               <h2 style={{ margin: 0, fontSize: 18, color: '#0f172a', marginBottom: 8, fontWeight: 700 }}>
@@ -122,16 +112,12 @@ export default function HearingsPage() {
               <p style={{ color: '#64748b', marginBottom: 20, fontSize: 13 }}>
                 AI analysis of witness credibility and cross examination.
               </p>
-
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div style={{ background: 'rgba(255,255,255,0.4)', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 12, padding: 16 }}>
                   <h3 style={{ marginTop: 0, fontSize: 14 }}>Primary Witness</h3>
                   <p style={{ fontSize: 13, color: '#334155' }}>Mother of petitioner</p>
-                  <p style={{ color: '#16a34a', fontWeight: 600, fontSize: 13, margin: 0 }}>
-                    Credibility Score: 92%
-                  </p>
+                  <p style={{ color: '#16a34a', fontWeight: 600, fontSize: 13, margin: 0 }}>Credibility Score: 92%</p>
                 </div>
-
                 <div style={{ background: 'rgba(255,255,255,0.4)', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 12, padding: 16 }}>
                   <h3 style={{ marginTop: 0, fontSize: 14 }}>Risk Factors</h3>
                   <ul style={{ fontSize: 13, color: '#334155', margin: 0, paddingLeft: 20 }}>
@@ -140,7 +126,6 @@ export default function HearingsPage() {
                     <li>Timeline clarification required</li>
                   </ul>
                 </div>
-
                 <div style={{ background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.1)', borderRadius: 12, padding: 16 }}>
                   <h3 style={{ marginTop: 0, fontSize: 14, color: '#1d4ed8' }}>Cross Examination Questions</h3>
                   <ul style={{ fontSize: 13, color: '#334155', margin: 0, paddingLeft: 20 }}>
@@ -149,12 +134,9 @@ export default function HearingsPage() {
                     <li>Communication records?</li>
                   </ul>
                 </div>
-
                 <div style={{ background: 'rgba(34, 197, 94, 0.05)', border: '1px solid rgba(34, 197, 94, 0.1)', borderRadius: 12, padding: 16 }}>
                   <h3 style={{ marginTop: 0, fontSize: 14, color: '#15803d' }}>AI Recommendation</h3>
-                  <p style={{ fontSize: 13, color: '#334155', margin: 0 }}>
-                    Prepare documentary evidence before oral examination.
-                  </p>
+                  <p style={{ fontSize: 13, color: '#334155', margin: 0 }}>Prepare documentary evidence before oral examination.</p>
                 </div>
               </div>
             </div>
@@ -163,12 +145,13 @@ export default function HearingsPage() {
         </div>
       </div>
 
+      {/* Add Hearing Modal — now with onSaved callback */}
       {showAddModal && (
         <AddHearingModal
           onClose={() => setShowAddModal(false)}
+          onSaved={handleSaved}
         />
       )}
     </>
   )
 }
-        

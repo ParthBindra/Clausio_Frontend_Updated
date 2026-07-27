@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useUIStore } from '@/lib/store'
+import { useUIStore, useCaseStore } from '@/lib/store'
 
 const NAV = [
   {
@@ -83,6 +83,7 @@ const NAV = [
 export default function Sidebar() {
   const pathname = usePathname()
   const { sidebarExpanded, toggleSidebar } = useUIStore()
+  const { selectedCaseName } = useCaseStore()
 
   const expanded = sidebarExpanded
 
@@ -119,6 +120,15 @@ export default function Sidebar() {
           <i className="ti ti-menu-2" style={{ fontSize: 18 }} />
         </button>
       </div>
+
+      {expanded && selectedCaseName && (
+        <div style={{ padding: '0 16px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', flexShrink: 0 }} />
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {selectedCaseName}
+          </span>
+        </div>
+      )}
 
       <nav
         style={{

@@ -1,6 +1,13 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
+import { useCaseStore } from '@/lib/store'
+import { aiApi, parseAiJson } from '@/lib/api'
+
+interface CrossQuestion {
+  category: string
+  question: string
+}
 
 const stats = [
   {
@@ -30,6 +37,35 @@ const stats = [
 ]
 
 export default function CrossExamination() {
+  const { selectedCaseId } = useCaseStore()
+  const [questions, setQuestions] = useState<CrossQuestion[] | null>(null)
+  const [rawText,   setRawText]   = useState('')
+  const [loading,   setLoading]   = useState(false)
+  const [error,     setError]     = useState('')
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
+
+  async function generateQuestions() {
+    if (!selectedCaseId) { setError('Select a case first.'); return }
+    setLoading(true)
+    setError('')
+    try {
+      const res = await aiApi.getWitness(selectedCaseId)
+      const parsed = parseAiJson<CrossQuestion[]>(res.result)
+      setQuestions(parsed)
+      setRawText(parsed ? '' : res.result)
+    } catch (err: any) {
+      setError(err.message || 'Failed to generate questions')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function copyQuestion(idx: number, text: string) {
+    navigator.clipboard.writeText(text)
+    setCopiedIdx(idx)
+    setTimeout(() => setCopiedIdx(null), 1500)
+  }
+
   return (
     <div>
 
@@ -68,13 +104,15 @@ export default function CrossExamination() {
         </div>
 
         <button
+          onClick={generateQuestions}
+          disabled={loading}
           style={{
             border: 'none',
-            background: '#3b82f6',
+            background: loading ? '#93c5fd' : '#3b82f6',
             color: '#fff',
             padding: '12px 20px',
             borderRadius: 10,
-            cursor: 'pointer',
+            cursor: loading ? 'not-allowed' : 'pointer',
             fontWeight: 600,
           }}
         >
@@ -82,9 +120,15 @@ export default function CrossExamination() {
             className="ti ti-sparkles"
             style={{ marginRight: 8 }}
           />
-          Analyze Witness
+          {loading ? 'Analysing...' : 'Analyze Witness'}
         </button>
       </div>
+
+      {error && (
+        <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 20 }}>
+          {error}
+        </div>
+      )}
 
       {/* ================= DASHBOARD ================= */}
 
@@ -642,17 +686,19 @@ export default function CrossExamination() {
           </h3>
 
           <button
+            onClick={generateQuestions}
+            disabled={loading}
             style={{
               border: 'none',
-              background: '#3b82f6',
+              background: loading ? '#93c5fd' : '#3b82f6',
               color: '#fff',
               borderRadius: 10,
               padding: '10px 18px',
-              cursor: 'pointer',
+              cursor: loading ? 'not-allowed' : 'pointer',
               fontWeight: 600,
             }}
           >
-            Regenerate Questions
+            {loading ? 'Generating...' : 'Regenerate Questions'}
           </button>
         </div>
 
@@ -665,39 +711,23 @@ export default function CrossExamination() {
             overflow: 'hidden',
           }}
         >
-          {[
-            {
-              category: 'Timeline',
-              question:
-                'Can you explain why your affidavit mentions 10:00 AM while your phone location indicates you were elsewhere?',
-            },
-            {
-              category: 'Financial',
-              question:
-                'Why did you state there were no financial transactions despite multiple bank transfers?',
-            },
-            {
-              category: 'Communication',
-              question:
-                'Can you explain the WhatsApp conversations that occurred after you stated there was no contact?',
-            },
-            {
-              category: 'Evidence',
-              question:
-                'Why does your statement differ from the documentary evidence submitted before the Court?',
-            },
-            {
-              category: 'Behaviour',
-              question:
-                'Have you changed any part of your statement after reviewing the documents?',
-            },
-          ].map((item, index) => (
+          {loading && <div style={{ padding: 22, fontSize: 13, color: '#64748b' }}>Generating questions...</div>}
+
+          {!loading && !questions && !rawText && (
+            <div style={{ padding: 22, fontSize: 13, color: '#94a3b8' }}>Click Analyze Witness to generate cross-examination questions for the selected case.</div>
+          )}
+
+          {!loading && !questions && rawText && (
+            <div style={{ padding: 22, fontSize: 13, color: '#334155', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{rawText}</div>
+          )}
+
+          {!loading && questions && questions.map((item, index) => (
             <div
               key={index}
               style={{
                 padding: 22,
                 borderBottom:
-                  index !== 4
+                  index !== questions.length - 1
                     ? '1px solid #e2e8f0'
                     : 'none',
               }}
@@ -723,6 +753,7 @@ export default function CrossExamination() {
                 </span>
 
                 <button
+                  onClick={() => copyQuestion(index, item.question)}
                   style={{
                     border: '1px solid rgba(0,0,0,0.05)',
                     background: 'rgba(255,255,255,0.4)',
@@ -731,7 +762,7 @@ export default function CrossExamination() {
                     cursor: 'pointer',
                   }}
                 >
-                  Copy
+                  {copiedIdx === index ? 'Copied!' : 'Copy'}
                 </button>
               </div>
 

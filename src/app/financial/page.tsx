@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
+import { useCaseStore } from '@/lib/store'
+import { aiApi, parseAiJson } from '@/lib/api'
 
 import FinancialTabs from '@/components/financial/FinancialTabs'
 import IncomeReality from '@/components/financial/IncomeReality'
@@ -10,8 +12,30 @@ import SettlementCalculator from '@/components/financial/SettlementCalculator'
 import AnalyzeFinancialModal from '@/components/financial/AnalyzeFinancialModal'
 
 export default function FinancialPage() {
+  const { selectedCaseId } = useCaseStore()
   const [activeTab, setActiveTab] = useState('Financial Intelligence')
   const [showModal, setShowModal] = useState(false)
+
+  const [analysis,  setAnalysis]  = useState<any>(null)
+  const [rawText,   setRawText]   = useState('')
+  const [loading,   setLoading]   = useState(false)
+  const [error,     setError]     = useState('')
+
+  const analyse = useCallback(async () => {
+    if (!selectedCaseId) { setError('Select a case first.'); return }
+    setLoading(true)
+    setError('')
+    try {
+      const res = await aiApi.getFinancial(selectedCaseId)
+      const parsed = parseAiJson<any>(res.result)
+      setAnalysis(parsed)
+      setRawText(parsed ? '' : res.result)
+    } catch (err: any) {
+      setError(err.message || 'Failed to analyse financials')
+    } finally {
+      setLoading(false)
+    }
+  }, [selectedCaseId])
 
   return (
     <>
@@ -28,11 +52,6 @@ export default function FinancialPage() {
           </div>
 
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            {/* Case Badge */}
-            <div style={{ padding: '4px 10px', borderRadius: 999, background: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', fontWeight: 600, fontSize: 11, border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-              Family & Matrimonial
-            </div>
-
             {/* Analyze Button */}
             <button
               className="glass-button"
@@ -52,6 +71,12 @@ export default function FinancialPage() {
           onChange={setActiveTab}
         />
 
+        {error && (
+          <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginTop: 16 }}>
+            {error}
+          </div>
+        )}
+
         {/* ================= Content ================= */}
 
         <div style={{ marginTop: 24 }}>
@@ -64,18 +89,18 @@ export default function FinancialPage() {
                 gap: 24,
               }}
             >
-              <IncomeReality />
+              <IncomeReality analysis={analysis} rawText={rawText} loading={loading} />
 
-              <MaintenanceRange />
+              <MaintenanceRange analysis={analysis} rawText={rawText} loading={loading} caseId={selectedCaseId} />
             </div>
           )}
 
           {activeTab === 'Maintenance Calculator' && (
-            <MaintenanceCalculator />
+            <MaintenanceCalculator caseId={selectedCaseId} />
           )}
 
           {activeTab === 'Settlement Calculator' && (
-            <SettlementCalculator />
+            <SettlementCalculator caseId={selectedCaseId} />
           )}
 
         </div>
@@ -86,6 +111,10 @@ export default function FinancialPage() {
       {showModal && (
         <AnalyzeFinancialModal
           onClose={() => setShowModal(false)}
+          onAnalyse={async () => {
+            await analyse()
+            setShowModal(false)
+          }}
         />
       )}
     </>

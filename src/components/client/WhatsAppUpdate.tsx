@@ -2,7 +2,12 @@
 
 import { useState } from 'react'
 
-export default function WhatsAppUpdate() {
+interface Props {
+  onGenerate: (tone: string, language: string) => void
+  generating: boolean
+}
+
+export default function WhatsAppUpdate({ onGenerate, generating }: Props) {
   const [language, setLanguage] = useState('Hinglish (Hindi + English)')
   const [tone, setTone] = useState('Reassuring')
 
@@ -119,21 +124,23 @@ export default function WhatsAppUpdate() {
       {/* Generate */}
 
       <button
+        onClick={() => onGenerate(tone, language)}
+        disabled={generating}
         style={{
           width: '100%',
           marginTop: 30,
           padding: '14px',
           border: 'none',
           borderRadius: 12,
-          background: '#22c55e',
+          background: generating ? '#86efac' : '#22c55e',
           color: '#ffffff',
           fontWeight: 700,
           fontSize: 15,
-          cursor: 'pointer',
+          cursor: generating ? 'not-allowed' : 'pointer',
           boxShadow: '0 10px 25px rgba(34,197,94,.25)',
         }}
       >
-        Generate for WhatsApp
+        {generating ? 'Generating...' : 'Generate for WhatsApp'}
       </button>
     </div>
   )

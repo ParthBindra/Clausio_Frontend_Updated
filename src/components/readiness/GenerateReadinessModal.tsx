@@ -1,14 +1,20 @@
 'use client'
 
 import { useState } from 'react'
+import { useCaseStore } from '@/lib/store'
+import { readinessApi } from '@/lib/api'
 
 interface Props {
   onClose: () => void
+  onGenerated?: () => void
 }
 
 export default function GenerateReadinessModal({
   onClose,
+  onGenerated,
 }: Props) {
+  const { selectedCaseId } = useCaseStore()
+
   const [hearingType, setHearingType] = useState('Interim Application')
   const [objective, setObjective] = useState('Secure Interim Maintenance')
   const [court, setCourt] = useState('Family Court')
@@ -19,6 +25,24 @@ export default function GenerateReadinessModal({
   const [argumentsCheck, setArgumentsCheck] = useState(true)
   const [financials, setFinancials] = useState(true)
   const [crossQuestions, setCrossQuestions] = useState(true)
+
+  const [generating, setGenerating] = useState(false)
+  const [error,      setError]      = useState('')
+
+  async function handleGenerate() {
+    if (!selectedCaseId) { setError('Select a case first.'); return }
+    setGenerating(true)
+    setError('')
+    try {
+      await readinessApi.generate(selectedCaseId)
+      onGenerated?.()
+      onClose()
+    } catch (err: any) {
+      setError(err.message || 'Failed to generate readiness report')
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   return (
     <div
@@ -198,6 +222,12 @@ export default function GenerateReadinessModal({
             </Field>
           </div>
 
+          {error && (
+            <div style={{ gridColumn: '1 / span 2', padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626' }}>
+              {error}
+            </div>
+          )}
+
           {/* AI Preview */}
 
           <div
@@ -257,8 +287,12 @@ export default function GenerateReadinessModal({
             Cancel
           </button>
 
-          <button style={primaryButton}>
-            ✨ Generate Readiness Report
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            style={{ ...primaryButton, opacity: generating ? 0.7 : 1, cursor: generating ? 'not-allowed' : 'pointer' }}
+          >
+            {generating ? '✨ Generating...' : '✨ Generate Readiness Report'}
           </button>
         </div>
       </div>

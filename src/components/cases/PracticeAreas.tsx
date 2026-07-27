@@ -1,75 +1,23 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-
 const practiceAreas = [
-  {
-    title: 'Family Law',
-    description: 'Divorce, custody, maintenance & domestic matters',
-    cases: 32,
-    color: '#2563eb',
-    icon: 'ti ti-users',
-    route: '/cases/family',
-  },
-  {
-    title: 'Civil Litigation',
-    description: 'Property, recovery suits & injunctions',
-    cases: 28,
-    color: '#16a34a',
-    icon: 'ti ti-scale',
-    route: '/cases/civil',
-  },
-  {
-    title: 'Criminal Law',
-    description: 'Bail, FIR, criminal trials & appeals',
-    cases: 18,
-    color: '#dc2626',
-    icon: 'ti ti-shield',
-    route: '/cases/criminal',
-  },
-  {
-    title: 'Corporate',
-    description: 'Companies Act, compliance & contracts',
-    cases: 15,
-    color: '#7c3aed',
-    icon: 'ti ti-building-bank',
-    route: '/cases/corporate',
-  },
-  {
-    title: 'GST',
-    description: 'GST notices, appeals & litigation',
-    cases: 12,
-    color: '#ea580c',
-    icon: 'ti ti-receipt-tax',
-    route: '/cases/gst',
-  },
-  {
-    title: 'Income Tax',
-    description: 'Assessment, appeals & tax disputes',
-    cases: 14,
-    color: '#0891b2',
-    icon: 'ti ti-cash-banknote',
-    route: '/cases/income-tax',
-  },
-  {
-    title: 'NI Act',
-    description: 'Cheque bounce matters under Section 138',
-    cases: 20,
-    color: '#f59e0b',
-    icon: 'ti ti-file-certificate',
-    route: '/cases/ni-act',
-  },
-  {
-    title: 'Arbitration',
-    description: 'Commercial arbitration & ADR',
-    cases: 9,
-    color: '#0f766e',
-    icon: 'ti ti-gavel',
-    route: '/cases/arbitration',
-  },
+  { title: 'Family Law',     match: 'family',     description: 'Divorce, custody, maintenance & domestic matters', color: '#2563eb', icon: 'ti ti-users' },
+  { title: 'Civil Litigation', match: 'civil',     description: 'Property, recovery suits & injunctions',           color: '#16a34a', icon: 'ti ti-scale' },
+  { title: 'Criminal Law',   match: 'criminal',    description: 'Bail, FIR, criminal trials & appeals',             color: '#dc2626', icon: 'ti ti-shield' },
+  { title: 'Corporate',      match: 'corporate',   description: 'Companies Act, compliance & contracts',            color: '#7c3aed', icon: 'ti ti-building-bank' },
+  { title: 'GST',            match: 'gst',         description: 'GST notices, appeals & litigation',                color: '#ea580c', icon: 'ti ti-receipt-tax' },
+  { title: 'Income Tax',     match: 'income tax',  description: 'Assessment, appeals & tax disputes',                color: '#0891b2', icon: 'ti ti-cash-banknote' },
+  { title: 'NI Act',         match: 'ni act',      description: 'Cheque bounce matters under Section 138',          color: '#f59e0b', icon: 'ti ti-file-certificate' },
+  { title: 'Arbitration',    match: 'arbitration', description: 'Commercial arbitration & ADR',                     color: '#0f766e', icon: 'ti ti-gavel' },
 ]
 
-export default function PracticeAreas() {
+interface Props {
+  cases:    any[]
+  selected: string
+  onSelect: (match: string) => void
+}
+
+export default function PracticeAreas({ cases, selected, onSelect }: Props) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -78,24 +26,31 @@ export default function PracticeAreas() {
             Practice Areas
           </h2>
           <p style={{ marginTop: 4, color: '#64748b', fontSize: 12 }}>
-            Select a practice area to view all related matters.
+            Select a practice area to filter matters below.
           </p>
         </div>
+        {selected && (
+          <button onClick={() => onSelect('')} style={{ fontSize: 12, fontWeight: 600, color: '#2563eb', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+            Clear filter ✕
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
-        {practiceAreas.map((area) => (
-          <PracticeCard key={area.title} {...area} />
-        ))}
+        {practiceAreas.map((area) => {
+          const count = cases.filter(c => c.caseType?.toLowerCase().includes(area.match)).length
+          return (
+            <PracticeCard key={area.title} {...area} count={count} active={selected === area.match} onClick={() => onSelect(selected === area.match ? '' : area.match)} />
+          )
+        })}
       </div>
     </div>
   )
 }
 
-function PracticeCard({ title, description, cases, color, icon, route }: { title: string, description: string, cases: number, color: string, icon: string, route: string }) {
-  const router = useRouter()
+function PracticeCard({ title, description, count, color, icon, active, onClick }: { title: string, description: string, count: number, color: string, icon: string, active: boolean, onClick: () => void }) {
   return (
-    <div className="glass-card" onClick={() => router.push(route)} style={{ padding: 16, cursor: 'pointer', transition: '.25s', display: 'flex', flexDirection: 'column' }}>
+    <div className="glass-card" onClick={onClick} style={{ padding: 16, cursor: 'pointer', transition: '.25s', display: 'flex', flexDirection: 'column', outline: active ? `2px solid ${color}` : 'none' }}>
       <div style={{ width: 42, height: 42, borderRadius: 12, background: color, display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 12, boxShadow: `0 4px 12px ${color}40` }}>
         <i className={icon} style={{ color: '#fff', fontSize: 20 }} />
       </div>
@@ -109,10 +64,10 @@ function PracticeCard({ title, description, cases, color, icon, route }: { title
 
       <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ color, fontWeight: 700, fontSize: 14 }}>
-          {cases} Cases
+          {count} Cases
         </span>
         <div style={{ color, fontWeight: 600, fontSize: 12, padding: '4px 8px', background: `${color}15`, borderRadius: 8 }}>
-          View →
+          {active ? 'Selected ✓' : 'View →'}
         </div>
       </div>
     </div>

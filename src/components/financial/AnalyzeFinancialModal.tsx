@@ -4,10 +4,12 @@ import { useState } from 'react'
 
 interface Props {
   onClose: () => void
+  onAnalyse: () => Promise<void>
 }
 
 export default function AnalyzeFinancialModal({
   onClose,
+  onAnalyse,
 }: Props) {
   const [analysisType, setAnalysisType] = useState('Maintenance Analysis')
   const [occupation, setOccupation] = useState('Business Owner')
@@ -19,6 +21,16 @@ export default function AnalyzeFinancialModal({
   const [salary, setSalary] = useState(true)
   const [property, setProperty] = useState(false)
   const [gst, setGst] = useState(false)
+  const [analysing, setAnalysing] = useState(false)
+
+  async function handleAnalyse() {
+    setAnalysing(true)
+    try {
+      await onAnalyse()
+    } finally {
+      setAnalysing(false)
+    }
+  }
 
   return (
     <div
@@ -238,9 +250,11 @@ export default function AnalyzeFinancialModal({
           </button>
 
           <button
-            style={primaryButton}
+            onClick={handleAnalyse}
+            disabled={analysing}
+            style={{ ...primaryButton, opacity: analysing ? 0.7 : 1, cursor: analysing ? 'not-allowed' : 'pointer' }}
           >
-            ✨ Analyse Financials
+            {analysing ? '✨ Analysing...' : '✨ Analyse Financials'}
           </button>
         </div>
       </div>

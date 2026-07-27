@@ -1,23 +1,40 @@
 'use client'
 
 import { useState } from 'react'
+import { aiApi } from '@/lib/api'
 
-export default function WhatsAppPreview() {
-  const [message] = useState(`Priya Ji,
+interface Props {
+  message:    string
+  generating: boolean
+  onRegenerate: (tone: string, language: string) => void
+}
 
-Aaj Family Court mein hearing hui.
+export default function WhatsAppPreview({ message, generating, onRegenerate }: Props) {
+  const [translating, setTranslating] = useState(false)
+  const [copied,       setCopied]     = useState(false)
+  const [translated,   setTranslated] = useState('')
 
-Judge ne Rohit ke vakil ko reply file karne ka final opportunity diya hai. Court ne clearly bola hai ki agar agli hearing tak reply file nahi hota hai to matter ex-parte proceed ho sakta hai.
+  const displayMessage = translated || message
 
-Agli hearing:
-24 June 2024
+  async function handleTranslate() {
+    if (!displayMessage.trim()) return
+    setTranslating(true)
+    try {
+      const res = await aiApi.translate({ text: displayMessage })
+      setTranslated(res.result)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setTranslating(false)
+    }
+  }
 
-Aap se request hai ki last 3 months ke bank statements aur salary related documents ready rakhiye.
-
-Koi bhi doubt ho to hume call ya WhatsApp kar sakti hain.
-
-Regards,
-Adv. Ram Pugalia`)
+  async function handleCopy() {
+    if (!displayMessage.trim()) return
+    await navigator.clipboard.writeText(displayMessage)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <div
@@ -67,15 +84,15 @@ Adv. Ram Pugalia`)
 
         <span
           style={{
-            background: '#dcfce7',
-            color: '#15803d',
+            background: displayMessage ? '#dcfce7' : '#f1f5f9',
+            color: displayMessage ? '#15803d' : '#64748b',
             padding: '8px 14px',
             borderRadius: 20,
             fontWeight: 600,
             fontSize: 13,
           }}
         >
-          Ready
+          {displayMessage ? 'Ready' : 'No message yet'}
         </span>
       </div>
 
@@ -90,22 +107,32 @@ Adv. Ram Pugalia`)
           overflowY: 'auto',
         }}
       >
-        <div
-          style={{
-            background: '#dcf8c6',
-            padding: 18,
-            borderRadius: 12,
-            maxWidth: '88%',
-            marginLeft: 'auto',
-            whiteSpace: 'pre-wrap',
-            lineHeight: 1.7,
-            fontSize: 14,
-            color: '#111827',
-            boxShadow: '0 2px 6px rgba(0,0,0,.08)',
-          }}
-        >
-          {message}
-        </div>
+        {generating && (
+          <div style={{ textAlign: 'center', color: '#64748b', fontSize: 13, padding: 20 }}>Generating message...</div>
+        )}
+        {!generating && !displayMessage && (
+          <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: 20 }}>
+            Configure the update on the left and click Generate for WhatsApp.
+          </div>
+        )}
+        {!generating && displayMessage && (
+          <div
+            style={{
+              background: '#dcf8c6',
+              padding: 18,
+              borderRadius: 12,
+              maxWidth: '88%',
+              marginLeft: 'auto',
+              whiteSpace: 'pre-wrap',
+              lineHeight: 1.7,
+              fontSize: 14,
+              color: '#111827',
+              boxShadow: '0 2px 6px rgba(0,0,0,.08)',
+            }}
+          >
+            {displayMessage}
+          </div>
+        )}
       </div>
 
       {/* Footer */}
@@ -118,24 +145,30 @@ Adv. Ram Pugalia`)
         }}
       >
         <button
-          style={secondaryButton}
+          onClick={() => onRegenerate('Reassuring', 'Hinglish (Hindi + English)')}
+          disabled={generating}
+          style={{ ...secondaryButton, cursor: generating ? 'not-allowed' : 'pointer' }}
         >
           <i className="ti ti-refresh" />
           Regenerate
         </button>
 
         <button
-          style={secondaryButton}
+          onClick={handleTranslate}
+          disabled={translating || !displayMessage}
+          style={{ ...secondaryButton, cursor: (translating || !displayMessage) ? 'not-allowed' : 'pointer' }}
         >
           <i className="ti ti-language" />
-          Translate
+          {translating ? 'Translating...' : 'Translate'}
         </button>
 
         <button
-          style={primaryButton}
+          onClick={handleCopy}
+          disabled={!displayMessage}
+          style={{ ...primaryButton, opacity: displayMessage ? 1 : 0.6, cursor: displayMessage ? 'pointer' : 'not-allowed' }}
         >
           <i className="ti ti-copy" />
-          Copy for WhatsApp
+          {copied ? 'Copied!' : 'Copy for WhatsApp'}
         </button>
       </div>
     </div>

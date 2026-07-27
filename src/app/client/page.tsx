@@ -1,14 +1,47 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useCaseStore } from '@/lib/store'
+import { casesApi, aiApi } from '@/lib/api'
 
 import WhatsAppUpdate from '@/components/client/WhatsAppUpdate'
 import WhatsAppPreview from '@/components/client/WhatsAppPreview'
 import GenerateUpdateModal from '@/components/client/GenerateUpdateModal'
 
 export default function ClientPage() {
+  const { selectedCaseId } = useCaseStore()
   const [activeTab, setActiveTab] = useState<'update' | 'fees'>('update')
   const [showModal, setShowModal] = useState(false)
+
+  const [caseData,  setCaseData]  = useState<any>(null)
+  const [message,   setMessage]   = useState('')
+  const [generating, setGenerating] = useState(false)
+  const [error,      setError]      = useState('')
+
+  useEffect(() => {
+    if (!selectedCaseId) return
+    casesApi.getById(selectedCaseId)
+      .then(setCaseData)
+      .catch(err => console.error(err))
+  }, [selectedCaseId])
+
+  const generate = useCallback(async (tone: string, language: string) => {
+    if (!selectedCaseId) { setError('Select a case first.'); return }
+    setGenerating(true)
+    setError('')
+    try {
+      const res = await aiApi.getWhatsApp(selectedCaseId, { tone, language })
+      setMessage(res.result)
+    } catch (err: any) {
+      setError(err.message || 'Failed to generate WhatsApp update')
+    } finally {
+      setGenerating(false)
+    }
+  }, [selectedCaseId])
+
+  const clientName = caseData?.client
+    ? `${caseData.client.firstName ?? ''} ${caseData.client.lastName ?? ''}`.trim()
+    : 'No client'
 
   return (
     <>
@@ -27,7 +60,7 @@ export default function ClientPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {/* Client Badge */}
             <div style={{ padding: '4px 10px', borderRadius: 999, background: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', fontWeight: 600, fontSize: 11, border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-              Priya Rajesh Sharma
+              {clientName}
             </div>
 
             {/* Generate Button */}
@@ -70,6 +103,12 @@ export default function ClientPage() {
 
         {/* ================= CONTENT ================= */}
 
+        {error && (
+          <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 16 }}>
+            {error}
+          </div>
+        )}
+
         {activeTab === 'update' && (
           <div
             style={{
@@ -78,9 +117,9 @@ export default function ClientPage() {
               gap: 24,
             }}
           >
-            <WhatsAppUpdate />
+            <WhatsAppUpdate onGenerate={generate} generating={generating} />
 
-            <WhatsAppPreview />
+            <WhatsAppPreview message={message} generating={generating} onRegenerate={generate} />
           </div>
         )}
 
@@ -105,6 +144,10 @@ export default function ClientPage() {
       {showModal && (
         <GenerateUpdateModal
           onClose={() => setShowModal(false)}
+          onGenerate={async (tone, language) => {
+            await generate(tone, language)
+            setShowModal(false)
+          }}
         />
       )}
     </>

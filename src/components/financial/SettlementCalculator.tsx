@@ -1,8 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { aiApi } from '@/lib/api'
 
-export default function SettlementCalculator() {
+interface Props {
+  caseId: string | null
+}
+
+export default function SettlementCalculator({ caseId }: Props) {
   const [monthlyMaintenance, setMonthlyMaintenance] = useState(50000)
   const [durationYears, setDurationYears] = useState(10)
   const [inflationRate, setInflationRate] = useState(5)
@@ -15,6 +20,27 @@ export default function SettlementCalculator() {
     suggestedSettlement: 4800000,
     savings: 1200000,
   })
+
+  const [draft,      setDraft]      = useState('')
+  const [drafting,   setDrafting]   = useState(false)
+  const [draftError, setDraftError] = useState('')
+
+  async function generateDraft() {
+    if (!caseId) { setDraftError('Select a case first.'); return }
+    setDrafting(true)
+    setDraftError('')
+    try {
+      const res = await aiApi.getDraft(caseId, {
+        draftType: 'Settlement Agreement',
+        instructions: `Suggested one-time settlement: ₹${result.suggestedSettlement.toLocaleString()} in lieu of ₹${monthlyMaintenance.toLocaleString()}/month maintenance for ${durationYears} years (estimated lifetime cost ₹${result.lifetimeCost.toLocaleString()}, estimated savings ₹${result.savings.toLocaleString()}).`,
+      })
+      setDraft(res.result)
+    } catch (err: any) {
+      setDraftError(err.message || 'Failed to generate draft')
+    } finally {
+      setDrafting(false)
+    }
+  }
 
   function calculateSettlement() {
     const totalMaintenance =
@@ -399,6 +425,19 @@ export default function SettlementCalculator() {
           </ul>
         </div>
 
+        {draftError && (
+          <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626' }}>
+            {draftError}
+          </div>
+        )}
+
+        {draft && (
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 16, padding: 22 }}>
+            <div style={{ fontWeight: 700, color: '#334155', marginBottom: 8 }}>Draft</div>
+            <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxHeight: 300, overflowY: 'auto' }}>{draft}</div>
+          </div>
+        )}
+
         {/* Footer */}
 
         <div
@@ -407,12 +446,12 @@ export default function SettlementCalculator() {
             gap: 14,
           }}
         >
-          <button style={secondaryButton}>
+          <button onClick={() => window.print()} style={secondaryButton}>
             Export Report
           </button>
 
-          <button style={primaryButton}>
-            Generate Settlement Draft
+          <button onClick={generateDraft} disabled={drafting} style={{ ...primaryButton, opacity: drafting ? 0.7 : 1, cursor: drafting ? 'not-allowed' : 'pointer' }}>
+            {drafting ? 'Generating...' : 'Generate Settlement Draft'}
           </button>
         </div>
       </div>

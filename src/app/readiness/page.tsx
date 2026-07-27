@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useCaseStore } from '@/lib/store'
+import { readinessApi } from '@/lib/api'
 
 import ReadinessTabs from '@/components/readiness/ReadinessTabs'
 import EmergencyResponse from '@/components/readiness/EmergencyResponse'
@@ -10,8 +12,25 @@ import StrengthAnalysis from '@/components/readiness/StrengthAnalysis'
 import GenerateReadinessModal from '@/components/readiness/GenerateReadinessModal'
 
 export default function ReadinessPage() {
+  const { selectedCaseId } = useCaseStore()
   const [activeTab, setActiveTab] = useState('Overview')
   const [showModal, setShowModal] = useState(false)
+
+  const [readiness, setReadiness] = useState<any>(null)
+  const [loading,   setLoading]   = useState(false)
+  const [error,     setError]     = useState('')
+
+  const load = useCallback(() => {
+    if (!selectedCaseId) return
+    setLoading(true)
+    setError('')
+    readinessApi.getByCaseId(selectedCaseId)
+      .then(setReadiness)
+      .catch(err => setError(err.message || 'Failed to load readiness'))
+      .finally(() => setLoading(false))
+  }, [selectedCaseId])
+
+  useEffect(() => { load() }, [load])
 
   return (
     <>
@@ -28,9 +47,6 @@ export default function ReadinessPage() {
           </div>
 
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <div style={{ padding: '4px 10px', borderRadius: 999, background: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', fontWeight: 600, fontSize: 11, border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-              Family & Matrimonial
-            </div>
             <button
               className="glass-button"
               onClick={() => setShowModal(true)}
@@ -49,6 +65,12 @@ export default function ReadinessPage() {
           onChange={setActiveTab}
         />
 
+        {error && (
+          <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 16 }}>
+            {error}
+          </div>
+        )}
+
         {/* ================= OVERVIEW ================= */}
 
         {activeTab === 'Overview' && (
@@ -63,7 +85,7 @@ export default function ReadinessPage() {
                 marginTop: 24,
               }}
             >
-              <ReadinessScore />
+              <ReadinessScore readiness={readiness} loading={loading} />
 
               <div
                 style={{
@@ -72,9 +94,9 @@ export default function ReadinessPage() {
                   gap: 20,
                 }}
               >
-                <GapAnalysis />
+                <GapAnalysis readiness={readiness} loading={loading} />
 
-                <StrengthAnalysis />
+                <StrengthAnalysis readiness={readiness} loading={loading} />
               </div>
             </div>
           </>
@@ -124,6 +146,10 @@ export default function ReadinessPage() {
       {showModal && (
         <GenerateReadinessModal
           onClose={() => setShowModal(false)}
+          onGenerated={() => {
+            setShowModal(false)
+            load()
+          }}
         />
       )}
     </>

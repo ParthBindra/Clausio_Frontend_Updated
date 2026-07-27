@@ -1,34 +1,52 @@
 'use client'
 
+import { useState } from 'react'
+import { useCaseStore } from '@/lib/store'
+import { aiApi } from '@/lib/api'
+
 const prompts = [
-  {
-    icon: 'ti-file-text',
-    title: 'Summarize Case',
-    description: 'Generate an AI case summary',
-  },
-  {
-    icon: 'ti-scale',
-    title: 'Legal Research',
-    description: 'Search judgments & precedents',
-  },
-  {
-    icon: 'ti-users',
-    title: 'Cross Examination',
-    description: 'Generate witness questions',
-  },
-  {
-    icon: 'ti-bulb',
-    title: 'Strategy',
-    description: 'Suggest litigation strategy',
-  },
-  {
-    icon: 'ti-shield-check',
-    title: 'Evidence Review',
-    description: 'Analyze evidence strength',
-  },
+  { icon: 'ti-file-text', title: 'Summarize Case',    description: 'Generate an AI case summary',    message: 'Summarize this case.' },
+  { icon: 'ti-scale',     title: 'Legal Research',     description: 'Search judgments & precedents',  message: 'Find relevant judgments and precedents for this case.' },
+  { icon: 'ti-users',     title: 'Cross Examination',  description: 'Generate witness questions',     message: 'Generate cross-examination questions for this case.' },
+  { icon: 'ti-bulb',      title: 'Strategy',           description: 'Suggest litigation strategy',    message: 'Suggest a litigation strategy for this case.' },
+  { icon: 'ti-shield-check', title: 'Evidence Review', description: 'Analyze evidence strength',      message: 'Analyze the strength of the evidence in this case.' },
 ]
 
+interface Message {
+  role: 'user' | 'assistant'
+  text: string
+}
+
 export default function AIChat() {
+  const { selectedCaseId } = useCaseStore()
+  const [messages, setMessages] = useState<Message[]>([])
+  const [input,    setInput]    = useState('')
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState('')
+
+  async function send(text: string) {
+    if (!text.trim() || loading) return
+    setError('')
+    const history = messages.map(m => m.text)
+    setMessages(prev => [...prev, { role: 'user', text }])
+    setInput('')
+    setLoading(true)
+    try {
+      const res = await aiApi.chat({ message: text, caseId: selectedCaseId || undefined, history })
+      setMessages(prev => [...prev, { role: 'assistant', text: res.result }])
+    } catch (err: any) {
+      setError(err.message || 'Failed to get AI response')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function clearChat() {
+    setMessages([])
+    setInput('')
+    setError('')
+  }
+
   return (
     <div>
 
@@ -45,6 +63,7 @@ export default function AIChat() {
 
         <button
           className="glass-button"
+          onClick={clearChat}
           style={{ height: 38, padding: '0 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}
         >
           <i className="ti ti-plus" />
@@ -64,6 +83,7 @@ export default function AIChat() {
             <div
               key={item.title}
               className="glass-card"
+              onClick={() => send(item.message)}
               style={{
                 padding: 14,
                 cursor: 'pointer',
@@ -97,201 +117,63 @@ export default function AIChat() {
           minHeight: 420,
         }}
       >
-        {/* AI Message */}
-
-        <div
-          style={{
-            display: 'flex',
-            gap: 16,
-            marginBottom: 28,
-          }}
-        >
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: '50%',
-              background: '#2563eb',
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <i className="ti ti-robot" />
-          </div>
-
-          <div
-            style={{
-              background: '#f8fafc',
-              borderRadius: 14,
-              padding: 18,
-              flex: 1,
-            }}
-          >
-            <div
-              style={{
-                fontWeight: 700,
-                marginBottom: 10,
-                color: '#0f172a',
-              }}
-            >
-              Clausio AI
+        {/* Welcome message */}
+        {messages.length === 0 && (
+          <div style={{ display: 'flex', gap: 16, marginBottom: 28 }}>
+            <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#2563eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <i className="ti ti-robot" />
             </div>
-
-            <div
-              style={{
-                color: '#334155',
-                lineHeight: 1.8,
-              }}
-            >
-              Hello 👋
-
-              <br />
-              <br />
-
-              I'm your AI legal assistant.
-
-              <br />
-              <br />
-
-              I can help you with:
-
-              <ul
-                style={{
-                  marginTop: 12,
-                }}
-              >
-                <li>Legal Research</li>
-                <li>Case Analysis</li>
-                <li>Cross Examination</li>
-                <li>Evidence Review</li>
-                <li>Strategy Suggestions</li>
-                <li>Document Understanding</li>
-                <li>Court Judgments</li>
-                <li>Client Communication</li>
-              </ul>
-
-              Start by asking me a question below.
-            </div>
-          </div>
-        </div>
-        {/* ================= AI RESPONSE CARDS ================= */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 24 }}>
-          {[
-            { icon: 'ti-file-text', title: 'Case Summary', value: 'Generated', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)', border: 'rgba(59, 130, 246, 0.2)' },
-            { icon: 'ti-scale', title: 'Relevant Judgments', value: '18 Found', color: '#16a34a', bg: 'rgba(34, 197, 94, 0.1)', border: 'rgba(34, 197, 94, 0.2)' },
-            { icon: 'ti-alert-triangle', title: 'Risk Score', value: 'Medium', color: '#d97706', bg: 'rgba(245, 158, 11, 0.1)', border: 'rgba(245, 158, 11, 0.2)' },
-          ].map((card) => (
-            <div key={card.title} style={{ background: card.bg, border: `1px solid ${card.border}`, borderRadius: 12, padding: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: card.color, fontSize: 11, fontWeight: 600 }}>{card.title}</span>
-                <i className={`ti ${card.icon}`} style={{ color: card.color, fontSize: 16 }} />
-              </div>
-              <div style={{ marginTop: 10, fontSize: 18, fontWeight: 700, color: '#0f172a' }}>
-                {card.value}
+            <div style={{ background: '#f8fafc', borderRadius: 14, padding: 18, flex: 1 }}>
+              <div style={{ fontWeight: 700, marginBottom: 10, color: '#0f172a' }}>Clausio AI</div>
+              <div style={{ color: '#334155', lineHeight: 1.8 }}>
+                Hello 👋
+                <br /><br />
+                I'm your AI legal assistant. I can help you with:
+                <ul style={{ marginTop: 12 }}>
+                  <li>Legal Research</li>
+                  <li>Case Analysis</li>
+                  <li>Cross Examination</li>
+                  <li>Evidence Review</li>
+                  <li>Strategy Suggestions</li>
+                  <li>Document Understanding</li>
+                </ul>
+                Start by asking me a question below.
               </div>
             </div>
-          ))}
-        </div>
-
-        {/* ================= FOLLOW-UP QUESTIONS ================= */}
-        <div style={{ marginBottom: 24 }}>
-          <h3 style={{ marginBottom: 12, color: '#0f172a', fontSize: 13, fontWeight: 600 }}>
-            Suggested Follow-up Questions
-          </h3>
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {[
-              'Summarize this petition',
-              'Find contradictory statements',
-              'Suggest cross examination questions',
-              'Research similar judgments',
-              'Explain Section 125 CrPC',
-              'Generate litigation strategy',
-            ].map((question) => (
-              <button
-                key={question}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: 999,
-                  border: '1px solid rgba(0,0,0,0.05)',
-                  background: 'rgba(255,255,255,0.6)',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                  color: '#334155',
-                  fontSize: 11
-                }}
-              >
-                {question}
-              </button>
-            ))}
           </div>
-        </div>
+        )}
 
-        {/* ================= RECENT CONVERSATIONS ================= */}
-        <div>
-          <h3 style={{ marginBottom: 12, color: '#0f172a', fontSize: 13, fontWeight: 600 }}>
-            Recent Conversations
-          </h3>
-
-          {[
-            { title: 'Divorce Petition Summary', time: 'Today • 10:42 AM' },
-            { title: 'Maintenance Case Research', time: 'Yesterday • 4:18 PM' },
-            { title: 'Cross Examination Preparation', time: 'Yesterday • 11:25 AM' },
-          ].map((chat, idx) => (
-            <div
-              key={chat.title}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '12px 14px',
-                borderBottom: idx < 2 ? '1px solid rgba(0,0,0,0.05)' : 'none',
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>
-                  {chat.title}
-                </div>
-                <div style={{ marginTop: 2, color: '#64748b', fontSize: 11 }}>
-                  {chat.time}
-                </div>
-              </div>
-
-              <button
-                style={{
-                  border: 'none',
-                  background: 'rgba(59, 130, 246, 0.1)',
-                  color: '#2563eb',
-                  borderRadius: 8,
-                  padding: '6px 12px',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  fontSize: 11
-                }}
-              >
-                Open
-              </button>
+        {/* Conversation history */}
+        {messages.map((m, i) => (
+          <div key={i} style={{ display: 'flex', gap: 16, marginBottom: 20, flexDirection: m.role === 'user' ? 'row-reverse' : 'row' }}>
+            <div style={{ width: 44, height: 44, borderRadius: '50%', background: m.role === 'user' ? '#0f172a' : '#2563eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <i className={m.role === 'user' ? 'ti ti-user' : 'ti ti-robot'} />
             </div>
-          ))}
-        </div>
-                {/* ================= INPUT AREA ================= */}
+            <div style={{ background: m.role === 'user' ? '#eff6ff' : '#f8fafc', borderRadius: 14, padding: 18, flex: 1, whiteSpace: 'pre-wrap' }}>
+              <div style={{ fontWeight: 700, marginBottom: 8, color: '#0f172a' }}>{m.role === 'user' ? 'You' : 'Clausio AI'}</div>
+              <div style={{ color: '#334155', lineHeight: 1.8 }}>{m.text}</div>
+            </div>
+          </div>
+        ))}
+
+        {loading && (
+          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 20 }}>Clausio AI is thinking...</div>
+        )}
+
+        {error && (
+          <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 20 }}>
+            {error}
+          </div>
+        )}
+
+        {/* ================= INPUT AREA ================= */}
         <div style={{ marginTop: 24, borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: 16 }}>
-          {/* Quick Actions */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-            <button style={actionButton}><i className="ti ti-paperclip" />Attach PDF</button>
-            <button style={actionButton}><i className="ti ti-photo" />Upload Image</button>
-            <button style={actionButton}><i className="ti ti-microphone" />Voice</button>
-            <button style={actionButton}><i className="ti ti-world-search" />Research</button>
-            <button style={actionButton}><i className="ti ti-download" />Export Chat</button>
-            <button style={actionButton}><i className="ti ti-trash" />Clear</button>
-          </div>
-
           {/* Chat Input */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
             <textarea
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) } }}
               placeholder="Ask Clausio anything... (e.g. Summarize this petition, find relevant judgments, generate cross-examination questions...)"
               rows={3}
               style={{
@@ -303,9 +185,11 @@ export default function AIChat() {
 
             <button
               className="glass-button"
+              onClick={() => send(input)}
+              disabled={loading || !input.trim()}
               style={{
-                height: 48, padding: '0 20px', border: 'none', borderRadius: 10, background: '#3b82f6', color: '#fff',
-                fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13,
+                height: 48, padding: '0 20px', border: 'none', borderRadius: 10, background: loading ? '#93c5fd' : '#3b82f6', color: '#fff',
+                fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13,
                 boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
               }}
             >
@@ -318,20 +202,4 @@ export default function AIChat() {
       </div>
     </div>
   )
-}
-
-/* ================= BUTTON STYLE ================= */
-
-const actionButton: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 6,
-  padding: '6px 12px',
-  background: 'rgba(255,255,255,0.6)',
-  border: '1px solid rgba(0,0,0,0.05)',
-  borderRadius: 8,
-  cursor: 'pointer',
-  fontWeight: 500,
-  color: '#334155',
-  fontSize: 11,
 }

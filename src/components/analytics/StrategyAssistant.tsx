@@ -1,6 +1,9 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
+import { useCaseStore } from '@/lib/store'
+import { aiApi, parseAiJson } from '@/lib/api'
+import type { CaseSummaryResponse } from '@/types/AIResponse'
 
 const stats = [
   {
@@ -30,6 +33,28 @@ const stats = [
 ]
 
 export default function StrategyAssistant() {
+  const { selectedCaseId } = useCaseStore()
+  const [summary,  setSummary]  = useState<CaseSummaryResponse | null>(null)
+  const [rawText,  setRawText]  = useState('')
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState('')
+
+  async function generateStrategy() {
+    if (!selectedCaseId) { setError('Select a case first.'); return }
+    setLoading(true)
+    setError('')
+    try {
+      const res = await aiApi.getSummary(selectedCaseId)
+      const parsed = parseAiJson<CaseSummaryResponse>(res.result)
+      setSummary(parsed)
+      setRawText(parsed ? '' : res.result)
+    } catch (err: any) {
+      setError(err.message || 'Failed to generate strategy')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div>
 
@@ -65,10 +90,16 @@ export default function StrategyAssistant() {
           </p>
         </div>
 
-        <button style={primaryButton}>
-          Generate Strategy
+        <button onClick={generateStrategy} disabled={loading} style={{ ...primaryButton, opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}>
+          {loading ? 'Generating...' : 'Generate Strategy'}
         </button>
       </div>
+
+      {error && (
+        <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 20 }}>
+          {error}
+        </div>
+      )}
 
       {/* SEARCH */}
 
@@ -107,8 +138,8 @@ export default function StrategyAssistant() {
             <option>Divorce</option>
           </select>
 
-          <button style={primaryButton}>
-            Analyze
+          <button onClick={generateStrategy} disabled={loading} style={{ ...primaryButton, opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}>
+            {loading ? '...' : 'Analyze'}
           </button>
         </div>
       </div>
@@ -187,13 +218,8 @@ export default function StrategyAssistant() {
             Strengths
           </h3>
 
-          <StrategyItem text="Strong documentary evidence" />
-
-          <StrategyItem text="Income proof available" />
-
-          <StrategyItem text="Recent Supreme Court support" />
-
-          <StrategyItem text="Good witness credibility" />
+          {!summary && <div style={{ color: '#94a3b8', fontSize: 13 }}>Generate a strategy to see case strengths.</div>}
+          {summary?.keyStrengths?.map((s, i) => <StrategyItem key={i} text={s} />)}
         </div>
 
         <div style={card}>
@@ -201,13 +227,8 @@ export default function StrategyAssistant() {
             Weaknesses
           </h3>
 
-          <StrategyItem text="Missing financial affidavit" />
-
-          <StrategyItem text="Delayed filing" />
-
-          <StrategyItem text="Few supporting witnesses" />
-
-          <StrategyItem text="Evidence gaps" />
+          {!summary && <div style={{ color: '#94a3b8', fontSize: 13 }}>Generate a strategy to see case weaknesses.</div>}
+          {summary?.keyWeaknesses?.map((s, i) => <StrategyItem key={i} text={s} />)}
         </div>
       </div>
 
@@ -256,15 +277,9 @@ export default function StrategyAssistant() {
             AI Recommendations
           </h3>
 
-          <StrategyItem text="File updated affidavit." />
-
-          <StrategyItem text="Prepare income calculation." />
-
-          <StrategyItem text="Collect bank statements." />
-
-          <StrategyItem text="Cite Rajnesh v. Neha." />
-
-          <StrategyItem text="Prepare settlement proposal." />
+          {!summary && !rawText && <div style={{ color: '#94a3b8', fontSize: 13, padding: '12px 0' }}>Click Generate Strategy to see AI recommendations.</div>}
+          {!summary && rawText && <div style={{ color: '#334155', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{rawText}</div>}
+          {summary?.nextSteps?.map((s, i) => <StrategyItem key={i} text={s} />)}
         </div>
       </div>
             {/* ================= OPPONENT STRATEGY ================= */}
@@ -427,8 +442,8 @@ export default function StrategyAssistant() {
             Export PDF
           </button>
 
-          <button style={primaryButton}>
-            Generate Complete Strategy
+          <button onClick={generateStrategy} disabled={loading} style={{ ...primaryButton, opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}>
+            {loading ? 'Generating...' : 'Generate Complete Strategy'}
           </button>
         </div>
       </div>

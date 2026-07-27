@@ -1,166 +1,242 @@
 'use client'
-// This is the main dashboard page — visible at /dashboard
-import { useState }   from 'react'
-import { motion }     from 'framer-motion'
-import { useUIStore } from '@/lib/store'
-import CaseList       from '@/components/cases/CaseList'
-import MetricsRow     from '@/components/dashboard/MetricsRow'
-import QuickActions   from '@/components/dashboard/QuickActions'
-import HearingDiary   from '@/components/dashboard/HearingDiary'
-import AIInsights     from '@/components/dashboard/AIInsights'
-import { MotionCard, MotionButton } from '@/components/ui/Motion'
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 }
-  }
-}
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 15, scale: 0.98 },
-  show: { 
-    opacity: 1, 
-    y: 0, 
-    scale: 1,
-    transition: { type: 'spring', stiffness: 300, damping: 24 }
-  }
-}
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { useUIStore  } from '@/lib/store'
+import { useCaseStore } from '@/lib/store'
+import { casesApi, hearingsApi, documentsApi, statsApi } from '@/lib/api'
+import CaseList     from '@/components/cases/CaseList'
+import MetricsRow   from '@/components/dashboard/MetricsRow'
+import QuickActions from '@/components/dashboard/QuickActions'
+import HearingDiary from '@/components/dashboard/HearingDiary'
+import AIInsights   from '@/components/dashboard/AIInsights'
 
 const TABS = ['Overview','Documents','Timeline','Hearings','AI analysis','Drafts','Research','Evidence','Witnesses','Tasks','Billing','History']
 
-const ACTIVITY = [
-  { dot: '#7c3aed', text: 'AI summary generated',            sub: 'Today 10:30 AM · Clausio AI'  },
-  { dot: '#3b82f6', text: 'Hospital records uploaded',       sub: 'Yesterday 4:15 PM · Parth B.' },
-  { dot: '#10b981', text: 'Client update sent via WhatsApp', sub: '15 Jun 2:00 PM · Parth B.'    },
-  { dot: '#f59e0b', text: '17 Jun hearing date confirmed',   sub: '14 Jun 11:00 AM · System'     },
-]
-
 export default function DashboardPage() {
+  const router = useRouter()
   const { caseListVisible, aiPanelVisible } = useUIStore()
+
+  // ✅ FIXED: only declare once
+  const { selectedCaseId, setSelectedCase } = useCaseStore()
+
   const [activeTab, setActiveTab] = useState('Overview')
+  const [caseData,  setCaseData]  = useState<any>(null)
+  const [hearings,  setHearings]  = useState<any[]>([])
+  const [documents, setDocuments] = useState<any[]>([])
+  const [activity,  setActivity]  = useState<any[]>([])
+
+  // ✅ Auto load first case if none selected
+  useEffect(() => {
+    if (selectedCaseId) return
+
+    const token = localStorage.getItem('clausio_token')
+    if (!token) return
+
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/cases`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(cases => {
+        if (Array.isArray(cases) && cases.length > 0) {
+          setSelectedCase(cases[0].id, cases[0].name)
+        }
+      })
+      .catch(err => console.error(err))
+  }, [selectedCaseId, setSelectedCase])
+
+  const loadHearings = useCallback(() => {
+    if (!selectedCaseId) return
+    hearingsApi.getByCaseId(selectedCaseId)
+      .then(data => setHearings(Array.isArray(data) ? data : []))
+      .catch(err => console.error(err))
+  }, [selectedCaseId])
+
+  // ✅ Reload case data whenever selectedCaseId changes
+  useEffect(() => {
+    if (!selectedCaseId) return
+
+    setCaseData(null)
+    setHearings([])
+    setDocuments([])
+
+    casesApi.getById(selectedCaseId)
+      .then(data => setCaseData(data))
+      .catch(err => console.error(err))
+
+    loadHearings()
+
+    documentsApi.getByCaseId(selectedCaseId)
+      .then(data => setDocuments(Array.isArray(data) ? data : []))
+      .catch(err => console.error(err))
+
+  }, [selectedCaseId, loadHearings])
+
+  useEffect(() => {
+    statsApi.activity()
+      .then(data => setActivity(Array.isArray(data) ? data : []))
+      .catch(err => console.error(err))
+  }, [])
+
+  // Get overdue orders from real hearings
+  const overdueOrders = hearings
+    .flatMap(h => h.orders ?? [])
+    .filter(o => !o.done && new Date(o.deadline) < new Date())
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-      {/* Three panels side by side */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', paddingBottom: 16, paddingTop: 16, paddingLeft: 16 }}>
+      {/* Breadcrumb */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 12px', background: '#fff', borderBottom: '1px solid #e2e8f0', fontSize: 10, color: '#94a3b8', flexShrink: 0 }}>
+        <span>Cases</span>
+        <span style={{ color: '#cbd5e1' }}>›</span>
+        <span style={{ color: '#0f172a', fontWeight: 500 }}>
+          {caseData?.name ?? 'Loading...'}
+        </span>
+      </div>
 
-        {/* PANEL 1 — Case list (left) */}
-        <div style={{ flexShrink: 0, overflow: 'hidden', transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)', width: caseListVisible ? 280 : 0, marginRight: caseListVisible ? 16 : 0 }}>
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+
+        {/* PANEL 1 — Case list */}
+        <div style={{ flexShrink: 0, overflow: 'hidden', transition: 'width 0.22s ease', width: caseListVisible ? 216 : 0, borderRight: caseListVisible ? '1px solid #e2e8f0' : 'none' }}>
           <CaseList />
         </div>
 
-        {/* PANEL 2 — Main workspace (centre) */}
-        <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0, marginRight: 16, borderRadius: 24 }}>
+        {/* PANEL 2 — Main workspace */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
 
-          {/* Breadcrumb & Case header */}
-          <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(0,0,0,0.05)', flexShrink: 0, background: 'rgba(255,255,255,0.3)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#475569', marginBottom: 12 }}>
-              <span style={{ cursor: 'pointer', transition: 'color 0.2s' }}>Cases</span>
-              <span style={{ color: '#94a3b8' }}>›</span>
-              <span style={{ color: '#0f172a', fontWeight: 600 }}>Priya v. Rohit Sharma</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-              <span style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>Priya v. Rohit Sharma</span>
-              <span className="glass-pill" style={{ fontSize: 11, padding: '4px 10px', fontWeight: 600, background: 'rgba(239, 68, 68, 0.1)', color: '#dc2626', border: '1px solid rgba(239, 68, 68, 0.2)' }}>● Hearing today</span>
-              <span className="glass-pill" style={{ fontSize: 11, padding: '4px 10px', fontWeight: 600, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.2)' }}>2 overdue</span>
-              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>Readiness</span>
-                <div style={{ width: 80, height: 6, background: 'rgba(0,0,0,0.05)', borderRadius: 4, overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)' }}>
-                  <div style={{ width: '72%', height: 6, background: '#10b981', borderRadius: 4 }} />
+          {/* Case header */}
+          <div style={{ padding: '8px 12px', background: '#fff', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
+                {caseData?.name ?? 'Select a case'}
+              </span>
+              {caseData && (
+                <>
+                  <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 20, fontWeight: 600, background: '#fef2f2', color: '#dc2626' }}>● {caseData.status}</span>
+                  {overdueOrders.length > 0 && (
+                    <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 20, fontWeight: 600, background: '#fef3c7', color: '#d97706' }}>{overdueOrders.length} overdue</span>
+                  )}
+                </>
+              )}
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: 9, color: '#64748b' }}>Readiness</span>
+                <div style={{ width: 60, height: 5, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ width: `${caseData?.readinessScore ?? 0}%`, height: 5, background: '#10b981', borderRadius: 3 }} />
                 </div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#10b981' }}>72%</span>
+                <span style={{ fontSize: 9, fontWeight: 600, color: '#10b981' }}>{caseData?.readinessScore ?? 0}%</span>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, fontSize: 12, color: '#475569', fontWeight: 500 }}>
-              <span>Family Court Bandra</span><span style={{ color: '#cbd5e1' }}>·</span>
-              <span>FC/2847/2023</span><span style={{ color: '#cbd5e1' }}>·</span>
-              <span>Next: <strong style={{ color: '#0f172a' }}>17 Jun 2024</strong></span>
+            <div style={{ display: 'flex', gap: 6, fontSize: 10, color: '#64748b' }}>
+              <span>{caseData?.court ?? '—'}</span>
+              <span style={{ color: '#cbd5e1' }}>·</span>
+              <span>{caseData?.caseNumber ?? '—'}</span>
+              <span style={{ color: '#cbd5e1' }}>·</span>
+              <span>Next: <strong style={{ color: '#0f172a' }}>
+                {caseData?.nextHearing
+                  ? new Date(caseData.nextHearing).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                  : '—'}
+              </strong></span>
             </div>
           </div>
 
-          {/* 12 tabs - iOS Segmented Control style */}
-          <div style={{ display: 'flex', overflowX: 'auto', flexShrink: 0, padding: '12px 24px', background: 'rgba(255,255,255,0.3)', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-            <div style={{ display: 'flex', background: 'rgba(0,0,0,0.04)', borderRadius: 10, padding: 4, gap: 2 }}>
-              {TABS.map(t => (
-                <button key={t} onClick={() => setActiveTab(t)}
-                  style={{ padding: '6px 14px', fontSize: 12, cursor: 'pointer', background: activeTab === t ? '#fff' : 'transparent', border: 'none', borderRadius: 8, color: activeTab === t ? '#0f172a' : '#64748b', fontWeight: activeTab === t ? 600 : 500, fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.2s ease', boxShadow: activeTab === t ? '0 2px 6px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)' : 'none' }}>
-                  {t}
-                </button>
-              ))}
-            </div>
+          {/* 12 tabs */}
+          <div style={{ display: 'flex', background: '#fff', borderBottom: '1px solid #e2e8f0', overflowX: 'auto', flexShrink: 0 }}>
+            {TABS.map(t => (
+              <button key={t} onClick={() => setActiveTab(t)}
+                style={{ padding: '6px 10px', fontSize: 10, cursor: 'pointer', background: 'transparent', border: 'none', borderBottom: `2px solid ${activeTab === t ? '#3b82f6' : 'transparent'}`, color: activeTab === t ? '#1e40af' : '#64748b', fontWeight: activeTab === t ? 500 : 400, fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                {t}
+              </button>
+            ))}
           </div>
 
           {/* Overdue alert */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(239, 68, 68, 0.05)', borderBottom: '1px solid rgba(239, 68, 68, 0.1)', padding: '12px 24px', fontSize: 12, color: '#7f1d1d', flexShrink: 0 }}>
-            <i className="ti ti-alert-triangle" style={{ color: '#dc2626', fontSize: 16 }} />
-            <span style={{ fontWeight: 600 }}>2 overdue deadlines</span>
-            <span style={{ color: '#475569' }}>— Respondent reply due 27 May. Judge warned of ex-parte proceedings.</span>
-            <MotionButton style={{ marginLeft: 'auto', padding: '6px 12px', color: '#dc2626', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>Resolve →</MotionButton>
-          </div>
-
-          {/* Scrollable content */}
-          <motion.div 
-            style={{ flex: 1, overflowY: 'auto', padding: '24px' }}
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-          >
-            <motion.div variants={itemVariants}><MetricsRow /></motion.div>
-            <motion.div variants={itemVariants}><QuickActions /></motion.div>
-
-            {/* Two columns */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-              <motion.div variants={itemVariants}><HearingDiary /></motion.div>
-
-              {/* Activity feed */}
-              <MotionCard variants={itemVariants} style={{ padding: '16px 20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: '#0f172a', marginBottom: 12 }}>
-                  <i className="ti ti-activity" style={{ fontSize: 16, color: '#64748b' }} />
-                  Activity feed
-                  <span style={{ marginLeft: 'auto', fontSize: 11, color: '#3b82f6', cursor: 'pointer', fontWeight: 600 }}>View all</span>
-                </div>
-                {ACTIVITY.map((a, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderBottom: i < ACTIVITY.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none' }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: a.dot, flexShrink: 0, marginTop: 4, boxShadow: `0 0 8px ${a.dot}40` }} />
-                    <div>
-                      <div style={{ fontSize: 12, color: '#0f172a', fontWeight: 500 }}>{a.text}</div>
-                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{a.sub}</div>
-                    </div>
-                  </div>
-                ))}
-              </MotionCard>
+          {overdueOrders.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: '#fef2f2', borderBottom: '1px solid #fca5a5', borderLeft: '3px solid #dc2626', padding: '6px 12px', fontSize: 10, color: '#7f1d1d', flexShrink: 0 }}>
+              <i className="ti ti-alert-triangle" style={{ color: '#dc2626', fontSize: 13 }} />
+              <span style={{ fontWeight: 500 }}>{overdueOrders.length} overdue deadlines</span>
+              <button style={{ marginLeft: 'auto', padding: '2px 8px', borderRadius: 5, border: '1px solid #fca5a5', background: '#fff', color: '#dc2626', fontSize: 9, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>Resolve →</button>
             </div>
+          )}
 
-            {/* Analytics */}
-            <MotionCard variants={itemVariants} style={{ padding: '16px 20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: '#0f172a', marginBottom: 16 }}>
-                <i className="ti ti-chart-pie" style={{ fontSize: 16, color: '#64748b' }} />
-                Practice analytics
-                <span style={{ marginLeft: 'auto', fontSize: 11, color: '#3b82f6', cursor: 'pointer', fontWeight: 600 }}>Full report →</span>
+          {/* Tab content */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '10px 12px' }}>
+
+            {/* No case selected state */}
+            {!caseData && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 200, color: '#94a3b8', gap: 8 }}>
+                <i className="ti ti-folder-open" style={{ fontSize: 32 }} />
+                <span style={{ fontSize: 13 }}>Select a case from the left panel</span>
               </div>
-              <div style={{ display: 'flex', background: 'rgba(255,255,255,0.4)', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 12, overflow: 'hidden' }}>
-                {[
-                  { val: '82%',  lbl: 'Success rate',  trend: '↑ vs last qtr', clr: '#10b981' },
-                  { val: '12.5L',lbl: 'Revenue (Rs)',   trend: '↑ 18% MoM',     clr: '#10b981' },
-                  { val: '78%',  lbl: 'AI usage',       trend: '↑ 12pts',       clr: '#7c3aed' },
-                  { val: '154',  lbl: 'Active cases',   trend: '→ Stable',      clr: '#f59e0b' },
-                ].map((seg, i) => (
-                  <div key={i} style={{ flex: 1, padding: '12px', textAlign: 'center', borderRight: i < 3 ? '1px solid rgba(0,0,0,0.05)' : 'none' }}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px' }}>{seg.val}</div>
-                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 2, fontWeight: 500 }}>{seg.lbl}</div>
-                    <div style={{ fontSize: 10, fontWeight: 600, color: seg.clr, marginTop: 4 }}>{seg.trend}</div>
+            )}
+
+            {/* OVERVIEW TAB */}
+            {activeTab === 'Overview' && caseData && (
+              <>
+                <MetricsRow hearings={hearings} documents={documents} caseData={caseData} overdueCount={overdueOrders.length} />
+                <QuickActions />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginBottom: 7 }}>
+                  <HearingDiary hearings={hearings} onChanged={loadHearings} />
+                  <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 9, padding: '9px 11px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: '#0f172a', marginBottom: 6 }}>
+                      <i className="ti ti-activity" style={{ fontSize: 12, color: '#94a3b8' }} />
+                      Activity feed
+                    </div>
+                    {activity.length === 0 && (
+                      <div style={{ fontSize: 10, color: '#94a3b8', padding: '4px 0' }}>No recent activity.</div>
+                    )}
+                    {activity.slice(0, 6).map((a, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, padding: '4px 0', borderBottom: i < Math.min(activity.length, 6) - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: a.type === 'Case' ? '#7c3aed' : a.type === 'Hearing' ? '#f59e0b' : '#3b82f6', flexShrink: 0, marginTop: 3 }} />
+                        <div>
+                          <div style={{ fontSize: 10, color: '#0f172a' }}>{a.description}</div>
+                          <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 1 }}>
+                            {a.occurredAt ? new Date(a.occurredAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : ''}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+
+                {/* Analytics */}
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 9, padding: '9px 11px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: '#0f172a', marginBottom: 8 }}>
+                    <i className="ti ti-chart-pie" style={{ fontSize: 12, color: '#94a3b8' }} />
+                    Practice analytics
+                    <span style={{ marginLeft: 'auto', fontSize: 9, color: '#3b82f6', cursor: 'pointer', fontWeight: 500 }}>Full report →</span>
+                  </div>
+                  <div style={{ display: 'flex', border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
+                    {[
+                      { val: hearings.length.toString(),             lbl: 'Hearing entries',  trend: 'Recorded',                                             clr: '#10b981' },
+                      { val: `${caseData?.readinessScore ?? 0}%`,   lbl: 'Case readiness',   trend: 'Current score',                                        clr: '#10b981' },
+                      { val: overdueOrders.length.toString(),        lbl: 'Overdue tasks',    trend: overdueOrders.length > 0 ? 'Act now' : 'All clear',     clr: overdueOrders.length > 0 ? '#ef4444' : '#10b981' },
+                      { val: caseData?.priority ?? '—',              lbl: 'Priority',         trend: caseData?.stage ?? '—',                                 clr: '#f59e0b' },
+                    ].map((seg, i) => (
+                      <div key={i} style={{ flex: 1, padding: '7px 8px', textAlign: 'center', borderRight: i < 3 ? '1px solid #e2e8f0' : 'none' }}>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: '#0f172a' }}>{seg.val}</div>
+                        <div style={{ fontSize: 9, color: '#64748b', marginTop: 1 }}>{seg.lbl}</div>
+                        <div style={{ fontSize: 9, fontWeight: 600, color: seg.clr, marginTop: 2 }}>{seg.trend}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* OTHER TABS */}
+            {activeTab !== 'Overview' && caseData && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 200, color: '#94a3b8', gap: 8 }}>
+                <i className="ti ti-tools" style={{ fontSize: 28 }} />
+                <span style={{ fontSize: 12 }}>{activeTab} — coming soon</span>
               </div>
-            </MotionCard>
-          </motion.div>
+            )}
+
+          </div>
         </div>
 
-        {/* PANEL 3 — AI Insights (right) */}
-        <div style={{ flexShrink: 0, overflow: 'hidden', transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)', width: aiPanelVisible ? 240 : 0, marginRight: aiPanelVisible ? 16 : 0 }}>
+        {/* PANEL 3 — AI Insights */}
+        <div style={{ flexShrink: 0, overflow: 'hidden', transition: 'width 0.22s ease', width: aiPanelVisible ? 200 : 0, borderLeft: aiPanelVisible ? '1px solid #e2e8f0' : 'none' }}>
           <AIInsights />
         </div>
 

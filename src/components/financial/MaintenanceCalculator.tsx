@@ -1,8 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { aiApi } from '@/lib/api'
 
-export default function MaintenanceCalculator() {
+interface Props {
+  caseId: string | null
+}
+
+export default function MaintenanceCalculator({ caseId }: Props) {
   const [husbandIncome, setHusbandIncome] = useState(250000)
   const [wifeIncome, setWifeIncome] = useState(30000)
   const [children, setChildren] = useState(1)
@@ -20,6 +25,27 @@ export default function MaintenanceCalculator() {
     minimum: 35000,
     maximum: 75000,
   })
+
+  const [draft,      setDraft]      = useState('')
+  const [drafting,   setDrafting]   = useState(false)
+  const [draftError, setDraftError] = useState('')
+
+  async function generateDraft() {
+    if (!caseId) { setDraftError('Select a case first.'); return }
+    setDrafting(true)
+    setDraftError('')
+    try {
+      const res = await aiApi.getDraft(caseId, {
+        draftType: 'Maintenance Application',
+        instructions: `Recommended monthly maintenance: ₹${result.recommended.toLocaleString()} (range ₹${result.minimum.toLocaleString()}–₹${result.maximum.toLocaleString()}). Husband income ₹${husbandIncome.toLocaleString()}/mo, wife income ₹${wifeIncome.toLocaleString()}/mo, ${children} child(ren), ${marriageYears} years of marriage, ${livingStandard} lifestyle.`,
+      })
+      setDraft(res.result)
+    } catch (err: any) {
+      setDraftError(err.message || 'Failed to generate draft')
+    } finally {
+      setDrafting(false)
+    }
+  }
 
   function calculateMaintenance() {
     const disposableIncome =
@@ -420,6 +446,19 @@ export default function MaintenanceCalculator() {
           </div>
         </div>
 
+        {draftError && (
+          <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626' }}>
+            {draftError}
+          </div>
+        )}
+
+        {draft && (
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 16, padding: 22 }}>
+            <div style={{ fontWeight: 700, color: '#334155', marginBottom: 8 }}>Draft</div>
+            <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxHeight: 300, overflowY: 'auto' }}>{draft}</div>
+          </div>
+        )}
+
         {/* Footer */}
 
         <div
@@ -429,15 +468,18 @@ export default function MaintenanceCalculator() {
           }}
         >
           <button
+            onClick={() => window.print()}
             style={secondaryButton}
           >
             Export Report
           </button>
 
           <button
-            style={primaryButton}
+            onClick={generateDraft}
+            disabled={drafting}
+            style={{ ...primaryButton, opacity: drafting ? 0.7 : 1, cursor: drafting ? 'not-allowed' : 'pointer' }}
           >
-            Generate Draft
+            {drafting ? 'Generating...' : 'Generate Draft'}
           </button>
         </div>
       </div>

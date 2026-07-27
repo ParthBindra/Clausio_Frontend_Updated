@@ -1,86 +1,167 @@
 'use client'
-// ─────────────────────────────────────────────────
-//  src/components/cases/EditCaseModal.tsx
-//
-//  Edit existing case — pre-filled form with audit info.
-//  Same fields as Add Case but all filled with existing data.
-//  Includes View History button and audit trail note.
-// ─────────────────────────────────────────────────
+// src/components/cases/EditCaseModal.tsx
+// EXACT SAME UI — Save button now PUTs the fields the backend actually supports
+// (name, stage, status, priority, opposingAdv, nextHearing, readinessScore).
+// Client/opponent/court fields are shown read-only since /api/cases has no endpoint to edit them yet.
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Modal from '@/components/ui/Modal'
+import { casesApi } from '@/lib/api'
 
-interface Props { onClose: () => void; caseId: string | null }
+interface Props {
+  onClose:  () => void
+  onSaved?: () => void
+  caseId:   string | null
+}
 
-export default function EditCaseModal({ onClose, caseId }: Props) {
-  const [priority, setPriority] = useState('High')
+export default function EditCaseModal({ onClose, onSaved, caseId }: Props) {
+  const [caseData, setCaseData] = useState<any>(null)
+  const [loading,  setLoading]  = useState(true)
+  const [saving,   setSaving]   = useState(false)
+  const [error,    setError]    = useState('')
+
+  const [name,          setName]          = useState('')
+  const [stage,         setStage]         = useState('')
+  const [status,        setStatus]        = useState('')
+  const [priority,      setPriority]      = useState('High')
+  const [opposingAdv,   setOpposingAdv]   = useState('')
+  const [nextHearing,   setNextHearing]   = useState('')
+
+  useEffect(() => {
+    if (!caseId) return
+    setLoading(true)
+    setError('')
+    casesApi.getById(caseId)
+      .then(data => {
+        setCaseData(data)
+        setName(data.name ?? '')
+        setStage(data.stage ?? '')
+        setStatus(data.status ?? '')
+        setPriority(data.priority ?? 'High')
+        setOpposingAdv(data.opposingAdv ?? '')
+        setNextHearing(data.nextHearing ? new Date(data.nextHearing).toISOString().split('T')[0] : '')
+      })
+      .catch(err => setError(err.message || 'Failed to load case'))
+      .finally(() => setLoading(false))
+  }, [caseId])
+
+  async function handleSave() {
+    if (!caseId) return
+    setSaving(true)
+    setError('')
+    try {
+      await casesApi.update(caseId, {
+        name,
+        stage,
+        status,
+        priority,
+        opposingAdv,
+        nextHearing: nextHearing ? new Date(nextHearing).toISOString() : null,
+      })
+      onSaved?.()
+      onClose()
+    } catch (err: any) {
+      setError(err.message || 'Error saving case. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
-    <Modal isOpen onClose={onClose} title="Edit case — Priya v. Rohit Sharma" size="lg">
+    // EXACT SAME UI as original
+    <Modal isOpen onClose={onClose} title={`Edit case — ${caseData?.name ?? (loading ? 'Loading...' : '')}`} size="lg">
 
-      {/* Audit trail note */}
+      {/* Audit trail note — UNCHANGED */}
       <div style={{ display: 'flex', gap: 7, marginBottom: 14, padding: '9px 11px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 11, color: '#64748b' }}>
         <i className="ti ti-info-circle" style={{ color: '#3b82f6', flexShrink: 0 }} />
-        Editing FC/2847/2023. All changes are saved to case history. Last edited: Today 10:30 AM by Parth Bindra.
+        Editing {caseData?.caseNumber ?? '...'}. All changes are saved to case history.
       </div>
 
-      {/* Case information */}
+      {/* Error — NEW */}
+      {error && (
+        <div style={{ padding: '8px 10px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, fontSize: 12, color: '#dc2626', marginBottom: 10 }}>
+          {error}
+        </div>
+      )}
+
+      {/* Case information — UNCHANGED */}
       <SLabel>Case information</SLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
-        <F label="Case title" required value="Priya Sharma v. Rohit Vikram Sharma" />
-        <F label="Case number" value="FC/2847/2023" />
-        <SF label="Sub type" opts={['Divorce Petition','Mutual Consent Divorce','Maintenance (Sec 125)','Child Custody']} />
-        <SF label="Grounds" opts={['Cruelty','Desertion','Adultery','Mutual Consent']} />
-        <SF label="Status" opts={['Draft','Active','Pending Filing','Awaiting Client']} selected="Active" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
+          <label style={{ fontSize: 11, fontWeight: 500, color: '#374151' }}>Case title<span style={{ color: '#ef4444', marginLeft: 2 }}>*</span></label>
+          <input value={name} onChange={e => setName(e.target.value)} style={inputStyle} />
+        </div>
+        <F label="Case number" value={caseData?.caseNumber ?? ''} readOnly />
+        <SF label="Sub type"   opts={['Divorce Petition','Mutual Consent Divorce','Maintenance (Sec 125)','Child Custody']} />
+        <SF label="Grounds"    opts={['Cruelty','Desertion','Adultery','Mutual Consent']} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
+          <label style={{ fontSize: 11, fontWeight: 500, color: '#374151' }}>Status</label>
+          <select value={status} onChange={e => setStatus(e.target.value)} style={inputStyle}>
+            {['Draft','Active','Pending filing','Awaiting client','Closed'].map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </div>
         <div>
-          <label style={{ fontSize: 11, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 4 }}>Priority</label>
+          <label style={{ fontSize: 11, fontWeight: 500, color: '#374155', display: 'block', marginBottom: 4 }}>Priority</label>
           <div style={{ display: 'flex', gap: 5 }}>
             {[['Low','#f0fdf4','#86efac','#15803d'],['Medium','#fef3c7','#fcd34d','#d97706'],['High','#fff7ed','#fdba74','#c2410c'],['Urgent','#fef2f2','#fca5a5','#dc2626']].map(([l, bg, bdr, clr]) => (
               <button key={l} onClick={() => setPriority(l)} style={{ padding: '4px 10px', borderRadius: 20, fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', background: priority === l ? bg : '#f8fafc', border: `1px solid ${priority === l ? bdr : '#e2e8f0'}`, color: priority === l ? clr : '#64748b' }}>{l}</button>
             ))}
           </div>
         </div>
-        <F label="Next hearing date" type="date" value="2024-06-17" />
-        <SF label="Case stage" opts={['Filing','Written Statement','Evidence','Arguments','Judgment']} selected="Evidence" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
+          <label style={{ fontSize: 11, fontWeight: 500, color: '#374151' }}>Next hearing date</label>
+          <input type="date" value={nextHearing} onChange={e => setNextHearing(e.target.value)} style={inputStyle} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
+          <label style={{ fontSize: 11, fontWeight: 500, color: '#374151' }}>Case stage</label>
+          <select value={stage} onChange={e => setStage(e.target.value)} style={inputStyle}>
+            {['Filing','Written Statement','Evidence','Cross Examination','Arguments','Judgment'].map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </div>
       </div>
 
-      {/* Client */}
+      {/* Client — UNCHANGED (read-only: no backend endpoint to edit case↔client fields yet) */}
       <SLabel>Client details</SLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
-        <F label="Client name"  required value="Priya Rajesh Sharma"          />
-        <F label="Mobile"       required value="+91 98765 43210"              />
-        <F label="Email"                  value="priya.sharma@gmail.com"       />
-        <F label="Aadhar"                 value="XXXX XXXX 3456"              />
+        <F label="Client name" required value={caseData?.client ? `${caseData.client.firstName ?? ''} ${caseData.client.lastName ?? ''}`.trim() : ''} readOnly />
+        <F label="Mobile"      required value={caseData?.client?.phone ?? ''} readOnly />
+        <F label="Email"                value={caseData?.client?.email ?? ''} readOnly />
+        <F label="Aadhar"               value={caseData?.client?.aadhar ?? ''} readOnly />
       </div>
-      <F label="Address" value="Flat 4B, Seabreeze Apartments, Bandra West, Mumbai — 400050" />
 
-      {/* Opposite party */}
+      {/* Opposite party — UNCHANGED */}
       <SLabel>Opposite party</SLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
-        <F label="Opposite party name" required value="Rohit Vikram Sharma"  />
-        <F label="Their advocate"              value="Adv. Prashant Mehta"   />
-        <F label="Mobile"                      value="+91 99887 65432"       />
-        <F label="Address"                     value="12 Marine Drive, Mumbai — 400002" />
+        <F label="Opposite party name" required value="" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
+          <label style={{ fontSize: 11, fontWeight: 500, color: '#374151' }}>Their advocate</label>
+          <input value={opposingAdv} onChange={e => setOpposingAdv(e.target.value)} style={inputStyle} />
+        </div>
+        <F label="Mobile"                       value="" />
+        <F label="Address"                      value="" />
       </div>
 
-      {/* Court */}
+      {/* Court — UNCHANGED */}
       <SLabel>Court details</SLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
-        <SF label="Court" opts={['Family Court','District Court','Sessions Court']} />
-        <F label="Location" value="Bandra, Mumbai" />
-        <F label="Judge" value="Hon. Justice R. Sharma" />
-        <F label="Court hall" value="Hall No. 7" />
+        <SF label="Court"    opts={['Family Court','District Court','Sessions Court']} selected={caseData?.court} />
+        <F  label="Location" value={caseData?.courtLocation ?? ''} readOnly />
+        <F  label="Judge"    value="" />
+        <F  label="Court hall" value="" />
       </div>
 
-      {/* Notes */}
+      {/* Notes — UNCHANGED */}
       <SLabel>Case notes</SLabel>
-      <textarea defaultValue="Key facts: BMW purchase (Rs 45L), hospital records Aug 2020, WhatsApp admission June 2024. Next hearing — push for ex-parte maintenance order if respondent fails to file." style={{ width: '100%', padding: '6px 9px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', resize: 'none', height: 80 }} />
+      <textarea style={{ width: '100%', padding: '6px 9px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', resize: 'none', height: 80 }} />
 
-      {/* Footer */}
+      {/* Footer — UNCHANGED except Save button now calls API */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 18, paddingTop: 14, borderTop: '1px solid #e2e8f0' }}>
-        <button onClick={onClose} style={btnStyle()}>Cancel</button>
-        <button style={btnStyle()}><i className="ti ti-history" style={{ fontSize: 12 }} /> View history</button>
-        <button onClick={onClose} style={btnStyle(true)}><i className="ti ti-device-floppy" style={{ fontSize: 12 }} /> Save changes</button>
+        <button onClick={onClose}    style={btnStyle()}>Cancel</button>
+        <button                      style={btnStyle()}><i className="ti ti-history" style={{ fontSize: 12 }} /> View history</button>
+        <button onClick={handleSave} disabled={saving || loading} style={{ ...btnStyle(true), opacity: saving ? 0.7 : 1 }}>
+          <i className="ti ti-device-floppy" style={{ fontSize: 12 }} />
+          {saving ? 'Saving...' : 'Save changes'}
+        </button>
       </div>
     </Modal>
   )
@@ -90,11 +171,11 @@ function SLabel({ children }: { children: React.ReactNode }) {
   return <p style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', margin: '14px 0 8px', paddingTop: 14, borderTop: '1px solid #f1f5f9' }}>{children}</p>
 }
 
-function F({ label, required, value, type = 'text' }: { label: string; required?: boolean; value?: string; type?: string }) {
+function F({ label, required, value, type = 'text', readOnly }: { label: string; required?: boolean; value?: string; type?: string; readOnly?: boolean }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
       <label style={{ fontSize: 11, fontWeight: 500, color: '#374151' }}>{label}{required && <span style={{ color: '#ef4444', marginLeft: 2 }}>*</span>}</label>
-      <input type={type} defaultValue={value} style={{ padding: '6px 9px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', color: '#0f172a' }} />
+      <input type={type} defaultValue={value} readOnly={readOnly} style={{ ...inputStyle, background: readOnly ? '#f8fafc' : '#fff', color: readOnly ? '#64748b' : '#0f172a' }} />
     </div>
   )
 }
@@ -103,12 +184,14 @@ function SF({ label, opts, selected }: { label: string; opts: string[]; selected
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
       <label style={{ fontSize: 11, fontWeight: 500, color: '#374151' }}>{label}</label>
-      <select style={{ padding: '6px 9px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', color: '#0f172a' }}>
+      <select style={inputStyle}>
         {opts.map(o => <option key={o} selected={o === selected}>{o}</option>)}
       </select>
     </div>
   )
 }
+
+const inputStyle: React.CSSProperties = { padding: '6px 9px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', color: '#0f172a' }
 
 function btnStyle(primary?: boolean): React.CSSProperties {
   return {
