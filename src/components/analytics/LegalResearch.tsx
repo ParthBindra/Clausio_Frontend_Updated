@@ -46,9 +46,9 @@ export default function LegalResearch() {
     setError('')
     try {
       const res = await aiApi.getLegalResearch(selectedCaseId)
-      const parsed = parseAiJson<Judgment[]>(res.result)
+      const parsed = parseAiJson<Judgment[]>(res.judgments ?? res.result ?? "")
       setJudgments(parsed)
-      setRawText(parsed ? '' : res.result)
+      setRawText(parsed ? "" : res.judgments ?? res.result ?? "")
     } catch (err: any) {
       setError(err.message || 'Failed to run research')
     } finally {

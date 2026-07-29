@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { useUIStore  } from '@/lib/store'
+import { useUIStore   } from '@/lib/store'
 import { useCaseStore } from '@/lib/store'
 import { casesApi, hearingsApi, documentsApi, statsApi } from '@/lib/api'
 import CaseList     from '@/components/cases/CaseList'
@@ -10,14 +10,19 @@ import MetricsRow   from '@/components/dashboard/MetricsRow'
 import QuickActions from '@/components/dashboard/QuickActions'
 import HearingDiary from '@/components/dashboard/HearingDiary'
 import AIInsights   from '@/components/dashboard/AIInsights'
+import {
+  DocumentsTab,
+  HearingsTab,
+  TasksTab,
+  ResearchTab,
+  TimelineTab,
+} from '@/components/dashboard/DashboardTabs'
 
-const TABS = ['Overview','Documents','Timeline','Hearings','AI analysis','Drafts','Research','Evidence','Witnesses','Tasks','Billing','History']
+const TABS = ['Overview', 'Documents', 'Hearings', 'Tasks', 'Research', 'Timeline']
 
 export default function DashboardPage() {
   const router = useRouter()
   const { caseListVisible, aiPanelVisible } = useUIStore()
-
-  // ✅ FIXED: only declare once
   const { selectedCaseId, setSelectedCase } = useCaseStore()
 
   const [activeTab, setActiveTab] = useState('Overview')
@@ -26,13 +31,11 @@ export default function DashboardPage() {
   const [documents, setDocuments] = useState<any[]>([])
   const [activity,  setActivity]  = useState<any[]>([])
 
-  // ✅ Auto load first case if none selected
+  // Auto load first case if none selected
   useEffect(() => {
     if (selectedCaseId) return
-
     const token = localStorage.getItem('clausio_token')
     if (!token) return
-
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/cases`, {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -52,10 +55,9 @@ export default function DashboardPage() {
       .catch(err => console.error(err))
   }, [selectedCaseId])
 
-  // ✅ Reload case data whenever selectedCaseId changes
+  // Reload case data whenever selectedCaseId changes
   useEffect(() => {
     if (!selectedCaseId) return
-
     setCaseData(null)
     setHearings([])
     setDocuments([])
@@ -78,7 +80,6 @@ export default function DashboardPage() {
       .catch(err => console.error(err))
   }, [])
 
-  // Get overdue orders from real hearings
   const overdueOrders = hearings
     .flatMap(h => h.orders ?? [])
     .filter(o => !o.done && new Date(o.deadline) < new Date())
@@ -90,9 +91,7 @@ export default function DashboardPage() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 12px', background: '#fff', borderBottom: '1px solid #e2e8f0', fontSize: 10, color: '#94a3b8', flexShrink: 0 }}>
         <span>Cases</span>
         <span style={{ color: '#cbd5e1' }}>›</span>
-        <span style={{ color: '#0f172a', fontWeight: 500 }}>
-          {caseData?.name ?? 'Loading...'}
-        </span>
+        <span style={{ color: '#0f172a', fontWeight: 500 }}>{caseData?.name ?? 'Loading...'}</span>
       </div>
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -140,7 +139,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* 12 tabs */}
+          {/* Tabs */}
           <div style={{ display: 'flex', background: '#fff', borderBottom: '1px solid #e2e8f0', overflowX: 'auto', flexShrink: 0 }}>
             {TABS.map(t => (
               <button key={t} onClick={() => setActiveTab(t)}
@@ -155,14 +154,12 @@ export default function DashboardPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: '#fef2f2', borderBottom: '1px solid #fca5a5', borderLeft: '3px solid #dc2626', padding: '6px 12px', fontSize: 10, color: '#7f1d1d', flexShrink: 0 }}>
               <i className="ti ti-alert-triangle" style={{ color: '#dc2626', fontSize: 13 }} />
               <span style={{ fontWeight: 500 }}>{overdueOrders.length} overdue deadlines</span>
-              <button style={{ marginLeft: 'auto', padding: '2px 8px', borderRadius: 5, border: '1px solid #fca5a5', background: '#fff', color: '#dc2626', fontSize: 9, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>Resolve →</button>
             </div>
           )}
 
           {/* Tab content */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '10px 12px' }}>
 
-            {/* No case selected state */}
             {!caseData && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 200, color: '#94a3b8', gap: 8 }}>
                 <i className="ti ti-folder-open" style={{ fontSize: 32 }} />
@@ -187,7 +184,7 @@ export default function DashboardPage() {
                     )}
                     {activity.slice(0, 6).map((a, i) => (
                       <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, padding: '4px 0', borderBottom: i < Math.min(activity.length, 6) - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: a.type === 'Case' ? '#7c3aed' : a.type === 'Hearing' ? '#f59e0b' : '#3b82f6', flexShrink: 0, marginTop: 3 }} />
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', flexShrink: 0, marginTop: 3 }} />
                         <div>
                           <div style={{ fontSize: 10, color: '#0f172a' }}>{a.description}</div>
                           <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 1 }}>
@@ -204,19 +201,17 @@ export default function DashboardPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: '#0f172a', marginBottom: 8 }}>
                     <i className="ti ti-chart-pie" style={{ fontSize: 12, color: '#94a3b8' }} />
                     Practice analytics
-                    <span style={{ marginLeft: 'auto', fontSize: 9, color: '#3b82f6', cursor: 'pointer', fontWeight: 500 }}>Full report →</span>
                   </div>
                   <div style={{ display: 'flex', border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
                     {[
-                      { val: hearings.length.toString(),             lbl: 'Hearing entries',  trend: 'Recorded',                                             clr: '#10b981' },
-                      { val: `${caseData?.readinessScore ?? 0}%`,   lbl: 'Case readiness',   trend: 'Current score',                                        clr: '#10b981' },
-                      { val: overdueOrders.length.toString(),        lbl: 'Overdue tasks',    trend: overdueOrders.length > 0 ? 'Act now' : 'All clear',     clr: overdueOrders.length > 0 ? '#ef4444' : '#10b981' },
-                      { val: caseData?.priority ?? '—',              lbl: 'Priority',         trend: caseData?.stage ?? '—',                                 clr: '#f59e0b' },
+                      { val: hearings.length.toString(),           lbl: 'Hearing entries',  clr: '#10b981' },
+                      { val: `${caseData?.readinessScore ?? 0}%`, lbl: 'Case readiness',   clr: '#10b981' },
+                      { val: overdueOrders.length.toString(),      lbl: 'Overdue tasks',    clr: overdueOrders.length > 0 ? '#ef4444' : '#10b981' },
+                      { val: caseData?.priority ?? '—',            lbl: 'Priority',         clr: '#f59e0b' },
                     ].map((seg, i) => (
                       <div key={i} style={{ flex: 1, padding: '7px 8px', textAlign: 'center', borderRight: i < 3 ? '1px solid #e2e8f0' : 'none' }}>
                         <div style={{ fontSize: 16, fontWeight: 600, color: '#0f172a' }}>{seg.val}</div>
                         <div style={{ fontSize: 9, color: '#64748b', marginTop: 1 }}>{seg.lbl}</div>
-                        <div style={{ fontSize: 9, fontWeight: 600, color: seg.clr, marginTop: 2 }}>{seg.trend}</div>
                       </div>
                     ))}
                   </div>
@@ -224,12 +219,29 @@ export default function DashboardPage() {
               </>
             )}
 
-            {/* OTHER TABS */}
-            {activeTab !== 'Overview' && caseData && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 200, color: '#94a3b8', gap: 8 }}>
-                <i className="ti ti-tools" style={{ fontSize: 28 }} />
-                <span style={{ fontSize: 12 }}>{activeTab} — coming soon</span>
-              </div>
+            {/* DOCUMENTS TAB */}
+            {activeTab === 'Documents' && caseData && (
+              <DocumentsTab caseId={selectedCaseId} />
+            )}
+
+            {/* HEARINGS TAB */}
+            {activeTab === 'Hearings' && caseData && (
+              <HearingsTab caseId={selectedCaseId} />
+            )}
+
+            {/* TASKS TAB */}
+            {activeTab === 'Tasks' && caseData && (
+              <TasksTab caseId={selectedCaseId} />
+            )}
+
+            {/* RESEARCH TAB */}
+            {activeTab === 'Research' && caseData && (
+              <ResearchTab caseId={selectedCaseId} />
+            )}
+
+            {/* TIMELINE TAB */}
+            {activeTab === 'Timeline' && caseData && (
+              <TimelineTab caseId={selectedCaseId} />
             )}
 
           </div>

@@ -1,4 +1,5 @@
 import React from 'react'
+import { MotionButton } from '@/components/ui/Motion'
 
 export default function StrategicNotes() {
   return (
@@ -7,19 +8,19 @@ export default function StrategicNotes() {
       <textarea
         placeholder="Focus on financial contradictions. Push maintenance above Rs 50,000..."
         style={{
-          width: '100%', minHeight: 120, padding: '10px 12px',
-          border: '1px solid #cbd5e1', borderRadius: 6,
-          fontSize: 13, background: '#fff', fontFamily: 'inherit', outline: 'none',
-          resize: 'vertical', color: '#0f172a'
+          width: '100%', minHeight: 140, padding: '14px 16px',
+          border: '1px solid rgba(0,0,0,0.05)', borderRadius: 12,
+          fontSize: 13, background: 'rgba(255,255,255,0.7)', fontFamily: 'inherit', outline: 'none',
+          resize: 'vertical', color: '#0f172a', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)', fontWeight: 500
         }}
       />
-      <button style={{
-        marginTop: 10, width: '100%', padding: '10px 12px', borderRadius: 6,
-        fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-        background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6
+      <MotionButton className="ai-magic-button" style={{
+        marginTop: 12, width: '100%', padding: '16px',
+        fontSize: 15, cursor: 'pointer', fontFamily: 'inherit',
+        display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8
       }}>
-        Generate legal draft
-      </button>
+        <i className="ti ti-sparkles" style={{ fontSize: 18 }} /> Generate legal draft
+      </MotionButton>
     </div>
   )
 }

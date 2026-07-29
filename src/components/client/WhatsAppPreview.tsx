@@ -21,7 +21,7 @@ export default function WhatsAppPreview({ message, generating, onRegenerate }: P
     setTranslating(true)
     try {
       const res = await aiApi.translate({ text: displayMessage })
-      setTranslated(res.result)
+      setTranslated(res.translatedText ?? res.result ?? '')
     } catch (err) {
       console.error(err)
     } finally {

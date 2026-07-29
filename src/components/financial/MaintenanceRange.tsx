@@ -15,16 +15,23 @@ export default function MaintenanceRange({ analysis, rawText, loading, caseId }:
   const [drafting,   setDrafting]   = useState(false)
   const [draftError, setDraftError] = useState('')
 
-  const factors: { label: string; value: string }[] = analysis?.calculationFactors ?? []
   const hasData = !!(analysis || rawText)
+
+  function formatAmount(val: any) {
+    if (!val) return '—'
+    return `₹${Number(val).toLocaleString('en-IN')}`
+  }
 
   async function generateDraft() {
     if (!caseId) { setDraftError('Select a case first.'); return }
     setDrafting(true)
     setDraftError('')
     try {
-      const res = await aiApi.getDraft(caseId, { draftType: 'Interim Maintenance Application', instructions: 'Based on the financial analysis for this case.' })
-      setDraft(res.result)
+      const res = await aiApi.getDraft(caseId, {
+        draftType: 'Interim Maintenance Application',
+        instructions: 'Based on the financial analysis for this case.'
+      })
+      setDraft(res.draft ?? res.result ?? '')
     } catch (err: any) {
       setDraftError(err.message || 'Failed to generate draft')
     } finally {
@@ -33,25 +40,9 @@ export default function MaintenanceRange({ analysis, rawText, loading, caseId }:
   }
 
   return (
-    <div
-      style={{
-        background: '#ffffff',
-        border: '1px solid #e2e8f0',
-        borderRadius: 16,
-        padding: 22,
-        boxShadow: '0 2px 8px rgba(15,23,42,.04)',
-      }}
-    >
-      {/* Header */}
+    <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 22, boxShadow: '0 2px 8px rgba(15,23,42,.04)' }}>
 
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 24,
-        }}
-      >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#0f172a' }}>Maintenance Range</h2>
           <p style={{ marginTop: 6, fontSize: 14, color: '#64748b' }}>AI estimated maintenance recommendation.</p>
@@ -70,25 +61,40 @@ export default function MaintenanceRange({ analysis, rawText, loading, caseId }:
 
       {!loading && hasData && (
         <>
-          {/* Amount Cards */}
-          {(analysis?.minimumMaintenance || analysis?.recommendedMaintenance || analysis?.maximumMaintenance) && (
+          {/* Maintenance Range Cards */}
+          {analysis?.maintenanceRange && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 26 }}>
-              <AmountCard title="Minimum" amount={analysis?.minimumMaintenance ?? '—'} color="#2563eb" background="#eff6ff" />
-              <AmountCard title="Recommended" amount={analysis?.recommendedMaintenance ?? '—'} color="#16a34a" background="#f0fdf4" highlight />
-              <AmountCard title="Maximum" amount={analysis?.maximumMaintenance ?? '—'} color="#d97706" background="#fff7ed" />
+              <AmountCard
+                title="Minimum"
+                amount={formatAmount(analysis.maintenanceRange.minimum)}
+                color="#2563eb"
+                background="#eff6ff"
+              />
+              <AmountCard
+                title="Recommended"
+                amount={formatAmount(analysis.maintenanceRange.recommended)}
+                color="#16a34a"
+                background="#f0fdf4"
+                highlight
+              />
+              <AmountCard
+                title="Maximum"
+                amount={formatAmount(analysis.maintenanceRange.maximum)}
+                color="#d97706"
+                background="#fff7ed"
+              />
             </div>
           )}
 
-          {/* Factors */}
-          {factors.length > 0 && (
+          {/* Settlement Range */}
+          {analysis?.settlementRange && (
             <div style={{ marginBottom: 24 }}>
-              <div style={{ fontWeight: 700, color: '#334155', fontSize: 16, marginBottom: 14 }}>Calculation Factors</div>
-              {factors.map((item, index) => (
-                <div key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: index !== factors.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
-                  <span style={{ color: '#64748b', fontSize: 14 }}>{item.label}</span>
-                  <span style={{ color: '#0f172a', fontWeight: 600, fontSize: 14 }}>{item.value}</span>
-                </div>
-              ))}
+              <div style={{ fontWeight: 700, color: '#334155', fontSize: 15, marginBottom: 12 }}>Settlement Range</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
+                <AmountCard title="Minimum"     amount={formatAmount(analysis.settlementRange.minimum)}     color="#2563eb" background="#eff6ff" />
+                <AmountCard title="Recommended" amount={formatAmount(analysis.settlementRange.recommended)} color="#16a34a" background="#f0fdf4" highlight />
+                <AmountCard title="Maximum"     amount={formatAmount(analysis.settlementRange.maximum)}     color="#d97706" background="#fff7ed" />
+              </div>
             </div>
           )}
 
@@ -99,7 +105,7 @@ export default function MaintenanceRange({ analysis, rawText, loading, caseId }:
               <span style={{ fontWeight: 700, color: '#2563eb' }}>AI Recommendation</span>
             </div>
             <div style={{ fontSize: 14, color: '#334155', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
-              {analysis?.aiRecommendation ?? rawText ?? 'No recommendation available.'}
+              {analysis?.summary ?? analysis?.aiRecommendation ?? rawText ?? 'No recommendation available.'}
             </div>
           </div>
 
@@ -111,8 +117,10 @@ export default function MaintenanceRange({ analysis, rawText, loading, caseId }:
 
           {draft && (
             <div style={{ marginTop: 18, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: 18 }}>
-              <div style={{ fontWeight: 700, color: '#334155', marginBottom: 8 }}>Draft</div>
-              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxHeight: 300, overflowY: 'auto' }}>{draft}</div>
+              <div style={{ fontWeight: 700, color: '#334155', marginBottom: 8 }}>Generated Draft</div>
+              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxHeight: 300, overflowY: 'auto' }}>
+                {draft}
+              </div>
             </div>
           )}
 
@@ -121,8 +129,11 @@ export default function MaintenanceRange({ analysis, rawText, loading, caseId }:
             <button onClick={() => window.print()} style={secondaryButton}>
               Export
             </button>
-
-            <button onClick={generateDraft} disabled={drafting} style={{ ...primaryButton, opacity: drafting ? 0.7 : 1, cursor: drafting ? 'not-allowed' : 'pointer' }}>
+            <button
+              onClick={generateDraft}
+              disabled={drafting}
+              style={{ ...primaryButton, opacity: drafting ? 0.7 : 1, cursor: drafting ? 'not-allowed' : 'pointer' }}
+            >
               {drafting ? 'Generating...' : 'Generate Draft'}
             </button>
           </div>
@@ -132,19 +143,7 @@ export default function MaintenanceRange({ analysis, rawText, loading, caseId }:
   )
 }
 
-function AmountCard({
-  title,
-  amount,
-  color,
-  background,
-  highlight,
-}: {
-  title: string
-  amount: string
-  color: string
-  background: string
-  highlight?: boolean
-}) {
+function AmountCard({ title, amount, color, background, highlight }: { title: string; amount: string; color: string; background: string; highlight?: boolean }) {
   return (
     <div style={{ background, border: highlight ? '2px solid #16a34a' : '1px solid #e2e8f0', borderRadius: 12, padding: 18, textAlign: 'center' }}>
       <div style={{ fontSize: 13, color: '#64748b', marginBottom: 10 }}>{title}</div>
@@ -154,22 +153,13 @@ function AmountCard({
 }
 
 const secondaryButton: React.CSSProperties = {
-  flex: 1,
-  padding: '12px',
-  borderRadius: 10,
-  border: '1px solid #cbd5e1',
-  background: '#ffffff',
-  cursor: 'pointer',
-  fontWeight: 600,
+  flex: 1, padding: '12px', borderRadius: 10,
+  border: '1px solid #cbd5e1', background: '#ffffff',
+  cursor: 'pointer', fontWeight: 600,
 }
 
 const primaryButton: React.CSSProperties = {
-  flex: 1,
-  padding: '12px',
-  borderRadius: 10,
-  border: 'none',
-  background: '#2563eb',
-  color: '#ffffff',
-  cursor: 'pointer',
-  fontWeight: 700,
+  flex: 1, padding: '12px', borderRadius: 10,
+  border: 'none', background: '#2563eb',
+  color: '#ffffff', cursor: 'pointer', fontWeight: 700,
 }

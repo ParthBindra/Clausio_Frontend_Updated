@@ -17,7 +17,7 @@ export default function RecommendationPanel() {
     setError('')
     aiApi.getSummary(selectedCaseId)
       .then(res => {
-        const parsed = parseAiJson<CaseSummaryResponse>(res.result)
+        const parsed = parseAiJson<CaseSummaryResponse>(res.summary ?? res.result ?? '')
         const steps  = parsed?.nextSteps ?? []
         setRecs(steps.map((s: string, i: number) => ({
           title:       s.split(' ').slice(0, 4).join(' '),

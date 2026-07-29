@@ -50,9 +50,9 @@ export default function CrossExamination() {
     setError('')
     try {
       const res = await aiApi.getWitness(selectedCaseId)
-      const parsed = parseAiJson<CrossQuestion[]>(res.result)
+      const parsed = parseAiJson<CrossQuestion[]>(res.intelligence ?? res.result ?? "")
       setQuestions(parsed)
-      setRawText(parsed ? '' : res.result)
+      setRawText(parsed ? "" : res.intelligence ?? res.result ?? "")
     } catch (err: any) {
       setError(err.message || 'Failed to generate questions')
     } finally {

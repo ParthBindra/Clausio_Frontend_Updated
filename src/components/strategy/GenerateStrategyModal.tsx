@@ -45,9 +45,9 @@ export default function GenerateStrategyModal({ onClose, onGenerated }: Props) {
         aiApi.getContradictions(selectedCaseId),
       ])
 
-      const actionItems     = parseAiJson<ActionPlanItem[]>(actionPlanRes.result) ?? []
-      const judgments        = parseAiJson<Judgment[]>(researchRes.result) ?? []
-      const contradictions   = parseAiJson<Contradiction[]>(contradictionsRes.result) ?? []
+      const actionItems    = parseAiJson<ActionPlanItem[]>(actionPlanRes.actionPlan ?? actionPlanRes.result ?? '') ?? []
+      const judgments      = parseAiJson<Judgment[]>(researchRes.judgments ?? researchRes.result ?? '') ?? []
+      const contradictions = parseAiJson<Contradiction[]>(contradictionsRes.contradictions ?? contradictionsRes.result ?? '') ?? []
 
       // Persist structured results into the case's records so the other tabs can load them
       await Promise.all([

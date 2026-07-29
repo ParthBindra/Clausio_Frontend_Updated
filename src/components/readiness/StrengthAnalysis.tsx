@@ -6,7 +6,7 @@ interface Props {
 }
 
 export default function StrengthAnalysis({ readiness, loading }: Props) {
-  const strengths: any[] = (readiness?.checklistItems ?? []).filter((i: any) => i.done)
+  const strengths: any[] = readiness?.strengths ?? (readiness?.checklistItems ?? []).filter((i: any) => i.done)
 
   return (
     <div className="glass-card" style={{ padding: 20 }}>
@@ -61,20 +61,11 @@ function StrengthCard({ item }: { item: any }) {
         gap: 8,
       }}
     >
-      <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{item.text}</div>
-      {item.category && (
-        <span
-          style={{
-            background: 'rgba(34, 197, 94, 0.1)',
-            border: '1px solid rgba(34, 197, 94, 0.2)',
-            color: '#15803d',
-            padding: '2px 8px',
-            borderRadius: 10,
-            fontWeight: 600,
-            fontSize: 10,
-            whiteSpace: 'nowrap',
-          }}
-        >
+      <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>
+        {typeof item === 'string' ? item : item.text ?? item.title ?? ''}
+      </div>
+      {typeof item !== 'string' && item.category && (
+        <span style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.2)', color: '#15803d', padding: '2px 8px', borderRadius: 10, fontWeight: 600, fontSize: 10, whiteSpace: 'nowrap' }}>
           {item.category}
         </span>
       )}

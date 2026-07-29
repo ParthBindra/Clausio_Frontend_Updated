@@ -28,7 +28,7 @@ export default function EmergencyResponse() {
     setResponse('')
     try {
       const res = await aiApi.getEmergency(selectedCaseId, { query })
-      setResponse(res.result)
+      setResponse(res.response ?? res.result ?? '')
     } catch (err: any) {
       setError(err.message || 'Failed to generate emergency response')
     } finally {

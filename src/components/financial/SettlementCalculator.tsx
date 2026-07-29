@@ -34,7 +34,7 @@ export default function SettlementCalculator({ caseId }: Props) {
         draftType: 'Settlement Agreement',
         instructions: `Suggested one-time settlement: ₹${result.suggestedSettlement.toLocaleString()} in lieu of ₹${monthlyMaintenance.toLocaleString()}/month maintenance for ${durationYears} years (estimated lifetime cost ₹${result.lifetimeCost.toLocaleString()}, estimated savings ₹${result.savings.toLocaleString()}).`,
       })
-      setDraft(res.result)
+      setDraft(res.draft ?? res.result ?? '')
     } catch (err: any) {
       setDraftError(err.message || 'Failed to generate draft')
     } finally {

@@ -12,8 +12,10 @@ function scoreLabel(score: number) {
 }
 
 export default function ReadinessScore({ readiness, loading }: Props) {
-  const score = readiness?.score ?? 0
-  const items = readiness?.checklistItems ?? []
+  const score     = readiness?.score ?? readiness?.readinessScore ?? 0
+  const items     = readiness?.checklistItems ?? []
+  const gaps      = readiness?.gaps ?? []
+  const strengths = readiness?.strengths ?? []
   const doneCount = items.filter((i: any) => i.done).length
   const label = scoreLabel(score)
 

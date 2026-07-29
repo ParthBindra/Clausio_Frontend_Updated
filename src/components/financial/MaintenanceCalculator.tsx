@@ -39,7 +39,7 @@ export default function MaintenanceCalculator({ caseId }: Props) {
         draftType: 'Maintenance Application',
         instructions: `Recommended monthly maintenance: ₹${result.recommended.toLocaleString()} (range ₹${result.minimum.toLocaleString()}–₹${result.maximum.toLocaleString()}). Husband income ₹${husbandIncome.toLocaleString()}/mo, wife income ₹${wifeIncome.toLocaleString()}/mo, ${children} child(ren), ${marriageYears} years of marriage, ${livingStandard} lifestyle.`,
       })
-      setDraft(res.result)
+      setDraft(res.draft ?? res.result ?? '')
     } catch (err: any) {
       setDraftError(err.message || 'Failed to generate draft')
     } finally {

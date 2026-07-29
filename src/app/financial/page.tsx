@@ -27,9 +27,10 @@ export default function FinancialPage() {
     setError('')
     try {
       const res = await aiApi.getFinancial(selectedCaseId)
-      const parsed = parseAiJson<any>(res.result)
+      const raw    = res.analysis ?? res.result ?? ''
+      const parsed = parseAiJson<any>(raw)
       setAnalysis(parsed)
-      setRawText(parsed ? '' : res.result)
+      setRawText(parsed ? '' : raw)
     } catch (err: any) {
       setError(err.message || 'Failed to analyse financials')
     } finally {

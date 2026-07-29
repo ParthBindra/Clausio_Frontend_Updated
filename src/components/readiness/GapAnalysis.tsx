@@ -6,7 +6,7 @@ interface Props {
 }
 
 export default function GapAnalysis({ readiness, loading }: Props) {
-  const gaps: any[] = (readiness?.checklistItems ?? []).filter((i: any) => !i.done)
+  const gaps: any[] = readiness?.gaps ?? readiness?.checklistItems ?? []
 
   return (
     <div className="glass-card" style={{ padding: 20 }}>
@@ -58,24 +58,15 @@ function GapCard({ gap }: { gap: any }) {
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{gap.text}</div>
-        {gap.category && (
-          <span
-            style={{
-              background: 'rgba(245, 158, 11, 0.1)',
-              border: '1px solid rgba(245, 158, 11, 0.2)',
-              color: '#d97706',
-              padding: '2px 8px',
-              borderRadius: 10,
-              fontSize: 10,
-              fontWeight: 600,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {gap.category}
-          </span>
-        )}
-      </div>
+        <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>
+            {gap.title ?? gap.text ?? 'Unknown gap'}
+          </div>
+          {(gap.severity ?? gap.category) && (
+            <span style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', color: '#d97706', padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap' }}>
+              {gap.severity ?? gap.category}
+            </span>
+          )}
+                </div>
     </div>
   )
 }

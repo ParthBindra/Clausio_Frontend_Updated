@@ -45,9 +45,9 @@ export default function StrategyAssistant() {
     setError('')
     try {
       const res = await aiApi.getSummary(selectedCaseId)
-      const parsed = parseAiJson<CaseSummaryResponse>(res.result)
+      const parsed = parseAiJson<CaseSummaryResponse>(res.summary ?? res.result ?? "")
       setSummary(parsed)
-      setRawText(parsed ? '' : res.result)
+      setRawText(parsed ? "" : res.summary ?? res.result ?? "")
     } catch (err: any) {
       setError(err.message || 'Failed to generate strategy')
     } finally {

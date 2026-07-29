@@ -33,6 +33,7 @@ export default function CasesPage() {
       .finally(() => setLoading(false))
   }, [])
 
+
   useEffect(() => { loadCases() }, [loadCases, refresh])
 
   const filteredCases = useMemo(() => {
@@ -47,6 +48,8 @@ export default function CasesPage() {
       return matchesSearch && matchesPractice
     })
   }, [cases, search, practiceFilter])
+  // Add after the state declarations
+
 
   return (
     <div className="glass-panel" style={{ flex: 1, overflowY: 'auto', margin: '16px', padding: 20, borderRadius: 24 }}>

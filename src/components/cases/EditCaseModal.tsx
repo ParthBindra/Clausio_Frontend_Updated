@@ -184,8 +184,11 @@ function SF({ label, opts, selected }: { label: string; opts: string[]; selected
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
       <label style={{ fontSize: 11, fontWeight: 500, color: '#374151' }}>{label}</label>
-      <select style={inputStyle}>
-        {opts.map(o => <option key={o} selected={o === selected}>{o}</option>)}
+      <select
+        defaultValue={selected ?? ''}
+        style={{ padding: '6px 9px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', color: '#0f172a' }}
+      >
+        {opts.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
     </div>
   )

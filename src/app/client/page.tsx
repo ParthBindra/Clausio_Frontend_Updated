@@ -31,7 +31,7 @@ export default function ClientPage() {
     setError('')
     try {
       const res = await aiApi.getWhatsApp(selectedCaseId, { tone, language })
-      setMessage(res.result)
+        setMessage(res.message ?? res.result ?? '')
     } catch (err: any) {
       setError(err.message || 'Failed to generate WhatsApp update')
     } finally {

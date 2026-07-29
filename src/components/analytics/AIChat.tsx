@@ -33,7 +33,7 @@ export default function AIChat() {
     setLoading(true)
     try {
       const res = await aiApi.chat({ message: text, caseId: selectedCaseId || undefined, history })
-      setMessages(prev => [...prev, { role: 'assistant', text: res.result }])
+      setMessages(prev => [...prev, { role: 'assistant', text: res.response ?? res.result ?? '' }])
     } catch (err: any) {
       setError(err.message || 'Failed to get AI response')
     } finally {

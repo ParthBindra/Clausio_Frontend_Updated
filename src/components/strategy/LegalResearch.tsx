@@ -61,7 +61,7 @@ export default function LegalResearch() {
     setError('')
     try {
       const res = await aiApi.getLegalResearch(selectedCaseId)
-      const judgments = parseAiJson<Judgment[]>(res.result) ?? []
+      const judgments = parseAiJson<Judgment[]>(res.judgments ?? res.result ?? '') ?? []
       await Promise.all(judgments.map(j => researchApi.create(selectedCaseId, {
         citation:        j.citation,
         court:           j.court,

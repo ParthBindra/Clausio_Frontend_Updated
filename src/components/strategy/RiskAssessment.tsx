@@ -12,44 +12,60 @@ export default function RiskAssessment() {
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
 
-  useEffect(() => {
+  function loadSummary() {
     if (!selectedCaseId) return
     setLoading(true)
     setError('')
     aiApi.getSummary(selectedCaseId)
       .then(res => {
-        const parsed = parseAiJson<CaseSummaryResponse>(res.result)
-        setData(parsed)
-        setRawText(parsed ? '' : res.result)
+        const raw    = res.summary ?? res.result ?? ''
+        const parsed = parseAiJson<CaseSummaryResponse>(raw)
+        if (parsed) {
+          setData(parsed)
+          setRawText('')
+        } else {
+          setData(null)
+          setRawText(raw)
+        }
       })
       .catch(err => setError(err.message || 'Failed to analyse case'))
       .finally(() => setLoading(false))
-  }, [selectedCaseId])
+  }
 
-  const strengthCount  = data?.keyStrengths?.length ?? 0
-  const weaknessCount  = data?.keyWeaknesses?.length ?? 0
-  const total          = strengthCount + weaknessCount
-  const favorable       = total > 0 ? Math.round((strengthCount / total) * 100) : null
-  const adverse         = total > 0 ? Math.round((weaknessCount / total) * 100) : null
-  const partial         = favorable !== null && adverse !== null ? 100 - favorable - adverse : null
+  useEffect(() => { loadSummary() }, [selectedCaseId])
+
+  const strengthCount = data?.keyStrengths?.length ?? 0
+  const weaknessCount = data?.keyWeaknesses?.length ?? 0
+  const total         = strengthCount + weaknessCount
+  const favorable     = total > 0 ? Math.round((strengthCount / total) * 100) : null
+  const adverse       = total > 0 ? Math.round((weaknessCount / total) * 100) : null
+  const partial       = favorable !== null && adverse !== null ? 100 - favorable - adverse : null
 
   return (
-    // EXACT SAME UI as original
     <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(15,23,42,.04)', height: '100%' }}>
 
-      {/* Header — UNCHANGED */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-        <i className="ti ti-shield-check" style={{ fontSize: 20, color: '#2563eb' }} />
-        <div>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Risk Assessment</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>AI evaluation of current case strength</p>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <i className="ti ti-shield-check" style={{ fontSize: 20, color: '#2563eb' }} />
+          <div>
+            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Risk Assessment</h2>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>AI evaluation of current case strength</p>
+          </div>
         </div>
+        <button
+          onClick={loadSummary}
+          disabled={loading}
+          style={{ padding: '4px 10px', fontSize: 11, borderRadius: 6, border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', color: '#64748b', fontFamily: 'inherit' }}
+        >
+          {loading ? 'Loading...' : '↻ Refresh'}
+        </button>
       </div>
 
       {/* Loading */}
       {loading && (
         <div style={{ textAlign: 'center', padding: 20, color: '#64748b', fontSize: 13 }}>
-          Analysing case...
+          Analysing case with AI...
         </div>
       )}
 
@@ -60,8 +76,34 @@ export default function RiskAssessment() {
         </div>
       )}
 
-      {/* Verdict Probability — UNCHANGED UI, real data */}
-      {!loading && !error && (
+      {/* Raw text fallback — when AI returns plain text */}
+      {!loading && !error && rawText && !data && (
+        <>
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontWeight: 600, color: '#334155', marginBottom: 14 }}>Verdict Probability</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
+              <ScoreCard color="#22c55e" value="—" title="Favorable" />
+              <ScoreCard color="#f59e0b" value="—" title="Partial"   />
+              <ScoreCard color="#ef4444" value="—" title="Adverse"   />
+            </div>
+          </div>
+
+          <div style={{ height: 1, background: '#e2e8f0', margin: '20px 0' }} />
+
+          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <i className="ti ti-sparkles" style={{ color: '#2563eb' }} />
+              <span style={{ fontWeight: 700, color: '#2563eb' }}>AI Analysis</span>
+            </div>
+            <p style={{ margin: 0, fontSize: 13, color: '#334155', lineHeight: 1.8, whiteSpace: 'pre-line' }}>
+              {rawText}
+            </p>
+          </div>
+        </>
+      )}
+
+      {/* Structured JSON data */}
+      {!loading && !error && data && (
         <>
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontWeight: 600, color: '#334155', marginBottom: 14 }}>Verdict Probability</div>
@@ -74,28 +116,25 @@ export default function RiskAssessment() {
 
           <div style={{ height: 1, background: '#e2e8f0', margin: '20px 0' }} />
 
-          {/* Key Weaknesses as Case Killers */}
           <div>
             <div style={{ fontWeight: 700, color: '#dc2626', marginBottom: 8 }}>Case Killer</div>
             <p style={{ margin: 0, color: '#475569', lineHeight: 1.7, fontSize: 14 }}>
-              {data?.keyWeaknesses?.[0] ?? (rawText || 'No weaknesses identified yet.')}
+              {data?.keyWeaknesses?.[0] ?? 'No weaknesses identified.'}
             </p>
           </div>
 
           <div style={{ height: 1, background: '#e2e8f0', margin: '22px 0' }} />
 
-          {/* AI Insight — real summary */}
           <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <i className="ti ti-sparkles" style={{ color: '#2563eb' }} />
               <span style={{ fontWeight: 700, color: '#2563eb' }}>AI Recommendation</span>
             </div>
             <p style={{ margin: 0, fontSize: 14, color: '#334155', lineHeight: 1.8 }}>
-              {data?.nextSteps?.[0] ?? (data ? 'No recommendation available yet.' : rawText || 'No recommendation available yet.')}
+              {data?.nextSteps?.[0] ?? 'No recommendation available.'}
             </p>
           </div>
 
-          {/* Key Strengths */}
           {data?.keyStrengths && data.keyStrengths.length > 0 && (
             <>
               <div style={{ height: 1, background: '#e2e8f0', margin: '22px 0' }} />
@@ -110,7 +149,26 @@ export default function RiskAssessment() {
               </div>
             </>
           )}
+
+          {data?.coreFacts && (
+            <>
+              <div style={{ height: 1, background: '#e2e8f0', margin: '22px 0' }} />
+              <div>
+                <div style={{ fontWeight: 700, color: '#334155', marginBottom: 8 }}>Core Facts</div>
+                <p style={{ margin: 0, fontSize: 13, color: '#475569', lineHeight: 1.7 }}>
+                  {data.coreFacts}
+                </p>
+              </div>
+            </>
+          )}
         </>
+      )}
+
+      {/* No case selected */}
+      {!loading && !error && !rawText && !data && !selectedCaseId && (
+        <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8', fontSize: 13 }}>
+          Select a case to see risk assessment
+        </div>
       )}
     </div>
   )
