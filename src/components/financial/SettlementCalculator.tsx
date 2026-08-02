@@ -3,591 +3,175 @@
 import { useState } from 'react'
 import { aiApi } from '@/lib/api'
 
-interface Props {
-  caseId: string | null
-}
+interface Props { caseId: string | null }
 
 export default function SettlementCalculator({ caseId }: Props) {
-  const [monthlyMaintenance, setMonthlyMaintenance] = useState(50000)
-  const [durationYears, setDurationYears] = useState(10)
-  const [inflationRate, setInflationRate] = useState(5)
-  const [discountRate, setDiscountRate] = useState(8)
-  const [legalExpense, setLegalExpense] = useState(400000)
-  const [litigationYears, setLitigationYears] = useState(3)
+  const [monthly,     setMonthly]     = useState(50000)
+  const [years,       setYears]       = useState(10)
+  const [inflation,   setInflation]   = useState(5)
+  const [legalCost,   setLegalCost]   = useState(400000)
+  const [litigYears,  setLitigYears]  = useState(3)
+  const [calculated,  setCalculated]  = useState(false)
 
-  const [result, setResult] = useState({
-    lifetimeCost: 6000000,
-    suggestedSettlement: 4800000,
-    savings: 1200000,
-  })
+  const [result, setResult] = useState({ lifetime: 0, settlement: 0, savings: 0, annualEquiv: 0 })
 
   const [draft,      setDraft]      = useState('')
   const [drafting,   setDrafting]   = useState(false)
   const [draftError, setDraftError] = useState('')
+  const [copied,     setCopied]     = useState(false)
+
+  const fmt = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`
+
+  function calculate() {
+    const totalMaintenance  = monthly * 12 * years
+    const inflationImpact   = totalMaintenance * (inflation / 100)
+    const litigationCost    = legalCost + (monthly * 12 * litigYears * 0.3) // partial maintenance during litigation
+    const lifetime          = totalMaintenance + inflationImpact + litigationCost
+    const settlement        = lifetime * 0.78
+    const savings           = lifetime - settlement
+    const annualEquiv       = settlement / years
+    setResult({ lifetime, settlement, savings, annualEquiv })
+    setCalculated(true)
+  }
 
   async function generateDraft() {
-    if (!caseId) { setDraftError('Select a case first.'); return }
-    setDrafting(true)
-    setDraftError('')
+    if (!caseId) { setDraftError('Select a case from the dashboard first.'); return }
+    setDrafting(true); setDraftError('')
     try {
       const res = await aiApi.getDraft(caseId, {
-        draftType: 'Settlement Agreement',
-        instructions: `Suggested one-time settlement: ₹${result.suggestedSettlement.toLocaleString()} in lieu of ₹${monthlyMaintenance.toLocaleString()}/month maintenance for ${durationYears} years (estimated lifetime cost ₹${result.lifetimeCost.toLocaleString()}, estimated savings ₹${result.savings.toLocaleString()}).`,
+        draftType: 'Consent Terms / Settlement Agreement',
+        instructions: `One-time settlement amount: ${fmt(result.settlement)} in full and final settlement of all maintenance claims. This is in lieu of ${fmt(monthly)}/month for ${years} years (estimated lifetime cost: ${fmt(result.lifetime)}, estimated savings to respondent: ${fmt(result.savings)}). Annual equivalent: ${fmt(result.annualEquiv)}.`,
       })
       setDraft(res.draft ?? res.result ?? '')
     } catch (err: any) {
       setDraftError(err.message || 'Failed to generate draft')
-    } finally {
-      setDrafting(false)
-    }
+    } finally { setDrafting(false) }
   }
 
-  function calculateSettlement() {
-    const totalMaintenance =
-      monthlyMaintenance * 12 * durationYears
-
-    const inflationImpact =
-      totalMaintenance * (inflationRate / 100)
-
-    const litigationCost =
-      legalExpense
-
-    const lifetime =
-      totalMaintenance +
-      inflationImpact +
-      litigationCost
-
-    const suggested =
-      lifetime * 0.80
-
-    setResult({
-      lifetimeCost: Math.round(lifetime),
-      suggestedSettlement: Math.round(suggested),
-      savings: Math.round(lifetime - suggested),
-    })
-  }
+  function copyDraft() { navigator.clipboard.writeText(draft); setCopied(true); setTimeout(() => setCopied(false), 2000) }
 
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '420px 1fr',
-        gap: 24,
-      }}
-    >
-      {/* ================= LEFT PANEL ================= */}
+    <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: 24 }}>
 
-      <div
-        style={{
-          background: '#fff',
-          border: '1px solid #e2e8f0',
-          borderRadius: 16,
-          padding: 24,
-          boxShadow: '0 2px 8px rgba(15,23,42,.04)',
-        }}
-      >
-        <h2
-          style={{
-            margin: 0,
-            fontSize: 22,
-            fontWeight: 700,
-            color: '#0f172a',
-          }}
-        >
-          Settlement Calculator
-        </h2>
+      {/* Left — Input */}
+      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(15,23,42,.04)' }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Settlement Calculator</h2>
+        <p style={{ margin: '0 0 24px', color: '#64748b', fontSize: 13 }}>Compare long-term maintenance cost vs. one-time settlement amount.</p>
 
-        <p
-          style={{
-            marginTop: 6,
-            marginBottom: 24,
-            color: '#64748b',
-          }}
-        >
-          Compare long-term maintenance against a one-time settlement.
-        </p>
+        {[
+          { label: 'Monthly Maintenance (₹)',     val: monthly,    set: setMonthly    },
+          { label: 'Expected Duration (Years)',    val: years,      set: setYears      },
+          { label: 'Expected Inflation (%)',       val: inflation,  set: setInflation  },
+          { label: 'Estimated Legal Expenses (₹)', val: legalCost, set: setLegalCost  },
+          { label: 'Expected Litigation (Years)',  val: litigYears, set: setLitigYears },
+        ].map(f => (
+          <div key={f.label} style={{ marginBottom: 16 }}>
+            <label style={labelSt}>{f.label}</label>
+            <input type="number" value={f.val} onChange={e => { f.set(Number(e.target.value)); setCalculated(false) }} style={inputSt} />
+          </div>
+        ))}
 
-        <Field label="Monthly Maintenance (₹)">
-          <input
-            type="number"
-            value={monthlyMaintenance}
-            onChange={(e) =>
-              setMonthlyMaintenance(Number(e.target.value))
-            }
-            style={inputStyle}
-          />
-        </Field>
-
-        <Field label="Expected Duration (Years)">
-          <input
-            type="number"
-            value={durationYears}
-            onChange={(e) =>
-              setDurationYears(Number(e.target.value))
-            }
-            style={inputStyle}
-          />
-        </Field>
-
-        <Field label="Expected Inflation (%)">
-          <input
-            type="number"
-            value={inflationRate}
-            onChange={(e) =>
-              setInflationRate(Number(e.target.value))
-            }
-            style={inputStyle}
-          />
-        </Field>
-
-        <Field label="Discount Rate (%)">
-          <input
-            type="number"
-            value={discountRate}
-            onChange={(e) =>
-              setDiscountRate(Number(e.target.value))
-            }
-            style={inputStyle}
-          />
-        </Field>
-
-        <Field label="Estimated Legal Expenses (₹)">
-          <input
-            type="number"
-            value={legalExpense}
-            onChange={(e) =>
-              setLegalExpense(Number(e.target.value))
-            }
-            style={inputStyle}
-          />
-        </Field>
-
-        <Field label="Expected Litigation (Years)">
-          <input
-            type="number"
-            value={litigationYears}
-            onChange={(e) =>
-              setLitigationYears(Number(e.target.value))
-            }
-            style={inputStyle}
-          />
-        </Field>
-
-        <button
-          onClick={calculateSettlement}
-          style={{
-            width: '100%',
-            marginTop: 20,
-            padding: '14px',
-            border: 'none',
-            borderRadius: 10,
-            background: '#2563eb',
-            color: '#fff',
-            fontWeight: 700,
-            fontSize: 15,
-            cursor: 'pointer',
-          }}
-        >
+        <button onClick={calculate} style={{ width: '100%', padding: '14px', borderRadius: 10, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', marginTop: 8 }}>
           Calculate Settlement
         </button>
       </div>
-            {/* ================= RIGHT PANEL ================= */}
 
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 20,
-        }}
-      >
-        {/* Summary */}
+      {/* Right — Results */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-        <div
-          style={{
-            background: '#fff',
-            border: '1px solid #e2e8f0',
-            borderRadius: 16,
-            padding: 24,
-            boxShadow: '0 2px 8px rgba(15,23,42,.04)',
-          }}
-        >
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 22,
-              fontWeight: 700,
-              color: '#0f172a',
-            }}
-          >
-            Settlement Recommendation
-          </h2>
-
-          <p
-            style={{
-              marginTop: 6,
-              color: '#64748b',
-              marginBottom: 24,
-            }}
-          >
-            AI estimated settlement based on maintenance liability.
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(15,23,42,.04)' }}>
+          <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Settlement Recommendation</h2>
+          <p style={{ margin: '0 0 20px', color: '#64748b', fontSize: 13 }}>
+            {calculated ? 'One-time settlement vs lifetime maintenance cost analysis.' : 'Enter details and click Calculate.'}
           </p>
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3,1fr)',
-              gap: 16,
-            }}
-          >
-            <AmountCard
-              title="Lifetime Cost"
-              amount={result.lifetimeCost}
-              color="#dc2626"
-              bg="#fef2f2"
-            />
-
-            <AmountCard
-              title="Suggested Settlement"
-              amount={result.suggestedSettlement}
-              color="#16a34a"
-              bg="#f0fdf4"
-              highlight
-            />
-
-            <AmountCard
-              title="Estimated Savings"
-              amount={result.savings}
-              color="#2563eb"
-              bg="#eff6ff"
-            />
-          </div>
+          {!calculated ? (
+            <div style={{ textAlign: 'center', padding: 30, color: '#94a3b8', fontSize: 13 }}>
+              <i className="ti ti-calculator" style={{ fontSize: 36, display: 'block', marginBottom: 8, opacity: 0.4 }} />
+              Fill the form and click Calculate Settlement
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
+              <ACard title="Lifetime Cost"        value={fmt(result.lifetime)}    color="#dc2626" bg="#fef2f2" />
+              <ACard title="Suggested Settlement" value={fmt(result.settlement)}  color="#16a34a" bg="#f0fdf4" highlight />
+              <ACard title="Respondent Saves"     value={fmt(result.savings)}     color="#2563eb" bg="#eff6ff" />
+            </div>
+          )}
         </div>
 
-        {/* Comparison */}
+        {calculated && (
+          <>
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 20 }}>
+              <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 14, marginBottom: 14 }}>Cost Breakdown</div>
+              {[
+                { label: 'Monthly Maintenance',    value: fmt(monthly)                                },
+                { label: 'Duration',               value: `${years} years`                            },
+                { label: 'Total Maintenance',      value: fmt(monthly * 12 * years)                   },
+                { label: 'Inflation Impact',       value: fmt(monthly * 12 * years * (inflation/100)) },
+                { label: 'Legal Expenses',         value: fmt(legalCost)                              },
+                { label: 'Litigation Duration',    value: `${litigYears} years`                       },
+                { label: 'Annual Equivalent',      value: `${fmt(result.annualEquiv)}/year`            },
+              ].map((r, i, arr) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: i < arr.length - 1 ? '1px solid #f1f5f9' : 'none', fontSize: 13 }}>
+                  <span style={{ color: '#64748b' }}>{r.label}</span>
+                  <strong>{r.value}</strong>
+                </div>
+              ))}
+            </div>
 
-        <div
-          style={{
-            background: '#fff',
-            border: '1px solid #e2e8f0',
-            borderRadius: 16,
-            padding: 24,
-          }}
-        >
-          <h3
-            style={{
-              margin: 0,
-              marginBottom: 18,
-              color: '#0f172a',
-            }}
-          >
-            Cost Breakdown
-          </h3>
+            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: 18 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <i className="ti ti-sparkles" style={{ color: '#2563eb' }} />
+                <span style={{ fontWeight: 700, color: '#2563eb', fontSize: 13 }}>Settlement Strategy</span>
+              </div>
+              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.8 }}>
+                The estimated lifetime maintenance liability is <strong>{fmt(result.lifetime)}</strong> over {years} years at {fmt(monthly)}/month (including {inflation}% inflation and {fmt(legalCost)} legal costs).
+                <br /><br />
+                A one-time settlement of <strong>{fmt(result.settlement)}</strong> saves the respondent approximately <strong>{fmt(result.savings)}</strong> and provides the petitioner immediate financial security without the uncertainty of prolonged litigation.
+                <br /><br />
+                <strong>Negotiation strategy:</strong> Start at {fmt(result.lifetime)} (full lifetime cost) and settle at {fmt(result.settlement)} — position it as a {Math.round((result.savings/result.lifetime)*100)}% discount for immediate payment.
+              </div>
+            </div>
 
-          <Breakdown
-            label="Monthly Maintenance"
-            value={`₹${monthlyMaintenance.toLocaleString()}`}
-          />
+            {draftError && (
+              <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626' }}>{draftError}</div>
+            )}
 
-          <Breakdown
-            label="Maintenance Duration"
-            value={`${durationYears} Years`}
-          />
+            {draft && (
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: 18 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ fontWeight: 700, color: '#334155', fontSize: 13 }}>Generated Consent Terms</div>
+                  <button onClick={copyDraft} style={{ height: 28, padding: '0 10px', border: '1px solid #e2e8f0', borderRadius: 6, background: copied ? '#f0fdf4' : '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 600, color: copied ? '#15803d' : '#475569', fontFamily: 'inherit' }}>
+                    <i className={`ti ${copied ? 'ti-check' : 'ti-copy'}`} style={{ marginRight: 4 }} />{copied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+                <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxHeight: 300, overflowY: 'auto' }}>{draft}</div>
+              </div>
+            )}
 
-          <Breakdown
-            label="Inflation Rate"
-            value={`${inflationRate}%`}
-          />
-
-          <Breakdown
-            label="Discount Rate"
-            value={`${discountRate}%`}
-          />
-
-          <Breakdown
-            label="Legal Expenses"
-            value={`₹${legalExpense.toLocaleString()}`}
-          />
-
-          <Breakdown
-            label="Litigation Duration"
-            value={`${litigationYears} Years`}
-            last
-          />
-        </div>
-
-        {/* AI Recommendation */}
-
-        <div
-          style={{
-            background: '#eff6ff',
-            border: '1px solid #bfdbfe',
-            borderRadius: 16,
-            padding: 22,
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              marginBottom: 12,
-            }}
-          >
-            <i
-              className="ti ti-sparkles"
-              style={{ color: '#2563eb' }}
-            />
-
-            <strong
-              style={{
-                color: '#2563eb',
-              }}
-            >
-              AI Recommendation
-            </strong>
-          </div>
-
-          <div
-            style={{
-              color: '#334155',
-              lineHeight: 1.8,
-            }}
-          >
-            Continuing maintenance for
-            <strong> {durationYears} years </strong>
-            is estimated to cost approximately
-
-            <strong>
-              {' '}
-              ₹{result.lifetimeCost.toLocaleString()}
-            </strong>
-            .
-
-            <br />
-            <br />
-
-            Clausio AI recommends negotiating a one-time settlement
-            close to
-
-            <strong>
-              {' '}
-              ₹{result.suggestedSettlement.toLocaleString()}
-            </strong>
-
-            , potentially saving around
-
-            <strong>
-              {' '}
-              ₹{result.savings.toLocaleString()}
-            </strong>
-
-            while avoiding prolonged litigation.
-          </div>
-        </div>
-
-        {/* Strategy */}
-
-        <div
-          style={{
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
-            borderRadius: 16,
-            padding: 22,
-          }}
-        >
-          <h3
-            style={{
-              margin: 0,
-              marginBottom: 14,
-              color: '#0f172a',
-            }}
-          >
-            Negotiation Strategy
-          </h3>
-
-          <ul
-            style={{
-              margin: 0,
-              paddingLeft: 20,
-              color: '#475569',
-              lineHeight: 1.9,
-            }}
-          >
-            <li>Start negotiation at ₹55 Lakhs.</li>
-
-            <li>Ideal settlement range ₹48–50 Lakhs.</li>
-
-            <li>Avoid accepting below ₹44 Lakhs.</li>
-
-            <li>
-              Highlight future litigation costs during mediation.
-            </li>
-          </ul>
-        </div>
-
-        {draftError && (
-          <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626' }}>
-            {draftError}
-          </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button onClick={() => window.print()} style={secBtn}>Export Report</button>
+              <button onClick={generateDraft} disabled={drafting} style={{ ...priBtn, opacity: drafting ? 0.7 : 1, cursor: drafting ? 'not-allowed' : 'pointer' }}>
+                {drafting ? 'Generating...' : 'Generate Consent Terms'}
+              </button>
+            </div>
+          </>
         )}
-
-        {draft && (
-          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 16, padding: 22 }}>
-            <div style={{ fontWeight: 700, color: '#334155', marginBottom: 8 }}>Draft</div>
-            <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxHeight: 300, overflowY: 'auto' }}>{draft}</div>
-          </div>
-        )}
-
-        {/* Footer */}
-
-        <div
-          style={{
-            display: 'flex',
-            gap: 14,
-          }}
-        >
-          <button onClick={() => window.print()} style={secondaryButton}>
-            Export Report
-          </button>
-
-          <button onClick={generateDraft} disabled={drafting} style={{ ...primaryButton, opacity: drafting ? 0.7 : 1, cursor: drafting ? 'not-allowed' : 'pointer' }}>
-            {drafting ? 'Generating...' : 'Generate Settlement Draft'}
-          </button>
-        </div>
       </div>
     </div>
   )
 }
 
-/* ====================================================== */
-
-function Field({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
+function ACard({ title, value, color, bg, highlight }: { title: string; value: string; color: string; bg: string; highlight?: boolean }) {
   return (
-    <div style={{ marginBottom: 18 }}>
-      <div
-        style={{
-          marginBottom: 8,
-          fontWeight: 600,
-          color: '#334155',
-        }}
-      >
-        {label}
-      </div>
-
-      {children}
+    <div style={{ background: bg, border: highlight ? `2px solid ${color}` : '1px solid #e2e8f0', borderRadius: 12, padding: 14, textAlign: 'center' }}>
+      <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8, fontWeight: 600 }}>{title}</div>
+      <div style={{ fontSize: 20, fontWeight: 800, color }}>{value}</div>
     </div>
   )
 }
 
-function Breakdown({
-  label,
-  value,
-  last,
-}: {
-  label: string
-  value: string
-  last?: boolean
-}) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        padding: '12px 0',
-        borderBottom: last
-          ? 'none'
-          : '1px solid #e2e8f0',
-      }}
-    >
-      <span style={{ color: '#64748b' }}>{label}</span>
-
-      <strong>{value}</strong>
-    </div>
-  )
-}
-
-function AmountCard({
-  title,
-  amount,
-  color,
-  bg,
-  highlight,
-}: {
-  title: string
-  amount: number
-  color: string
-  bg: string
-  highlight?: boolean
-}) {
-  return (
-    <div
-      style={{
-        background: bg,
-        border: highlight
-          ? '2px solid #16a34a'
-          : '1px solid #e2e8f0',
-        borderRadius: 14,
-        padding: 18,
-        textAlign: 'center',
-      }}
-    >
-      <div
-        style={{
-          color: '#64748b',
-          fontSize: 13,
-        }}
-      >
-        {title}
-      </div>
-
-      <div
-        style={{
-          marginTop: 10,
-          fontSize: 26,
-          fontWeight: 700,
-          color,
-        }}
-      >
-        ₹{amount.toLocaleString()}
-      </div>
-    </div>
-  )
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '12px 14px',
-  border: '1px solid #cbd5e1',
-  borderRadius: 10,
-  fontSize: 14,
-  outline: 'none',
-  fontFamily: 'inherit',
-  boxSizing: 'border-box',
-}
-
-const secondaryButton: React.CSSProperties = {
-  flex: 1,
-  padding: '14px',
-  borderRadius: 10,
-  border: '1px solid #cbd5e1',
-  background: '#fff',
-  cursor: 'pointer',
-  fontWeight: 600,
-}
-
-const primaryButton: React.CSSProperties = {
-  flex: 1,
-  padding: '14px',
-  borderRadius: 10,
-  border: 'none',
-  background: '#2563eb',
-  color: '#fff',
-  cursor: 'pointer',
-  fontWeight: 700,
-}
+const labelSt: React.CSSProperties = { display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 600, color: '#374151' }
+const inputSt:  React.CSSProperties = { width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', background: '#f8fafc' }
+const secBtn:   React.CSSProperties = { flex: 1, padding: '12px', borderRadius: 10, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }
+const priBtn:   React.CSSProperties = { flex: 1, padding: '12px', borderRadius: 10, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }

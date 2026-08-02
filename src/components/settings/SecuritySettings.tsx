@@ -1,417 +1,126 @@
 'use client'
 
+import { useState } from 'react'
+import { authApi } from '@/lib/api'
+
 export default function SecuritySettings() {
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword,     setNewPassword]     = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [saving,          setSaving]          = useState(false)
+  const [success,         setSuccess]         = useState('')
+  const [error,           setError]           = useState('')
+
+  async function handleChangePassword() {
+    setError('')
+    setSuccess('')
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setError('Please fill all fields.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setError('New passwords do not match.')
+      return
+    }
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters.')
+      return
+    }
+    setSaving(true)
+    try {
+      await authApi.changePassword({ currentPassword, newPassword })
+      setSuccess('Password changed successfully.')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err: any) {
+      setError(err.message || 'Failed to change password. Check your current password.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const user = authApi.getUser()
+
   return (
     <div>
-
-      {/* ================= HEADER ================= */}
-
-      <div style={{ marginBottom: 30 }}>
-        <h2
-          style={{
-            margin: 0,
-            fontSize: 24,
-            fontWeight: 700,
-            color: '#0f172a',
-          }}
-        >
-          Security Settings
-        </h2>
-
-        <p
-          style={{
-            marginTop: 6,
-            color: '#64748b',
-            fontSize: 14,
-          }}
-        >
-          Protect your account, client data and legal documents with advanced security controls.
-        </p>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#0f172a' }}>Security</h2>
+        <p style={{ marginTop: 4, color: '#64748b', fontSize: 13 }}>Manage your password and account security.</p>
       </div>
 
-      {/* ================= PASSWORD ================= */}
+      {/* Account Info */}
+      <div style={{ padding: 16, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, marginBottom: 28 }}>
+        <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>Signed in as</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{user?.email ?? '—'}</div>
+        <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{user?.role ?? '—'}</div>
+      </div>
 
-      <Section title="Password">
+      {/* Change Password */}
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 14, paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>Change Password</div>
 
-        <Field
-          label="Current Password"
-          placeholder="••••••••••••"
-        />
+        {success && (
+          <div style={{ marginBottom: 16, padding: '10px 14px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, fontSize: 13, color: '#15803d' }}>
+            ✓ {success}
+          </div>
+        )}
+        {error && (
+          <div style={{ marginBottom: 16, padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626' }}>
+            ⚠ {error}
+          </div>
+        )}
 
-        <Field
-          label="New Password"
-          placeholder="Enter new password"
-        />
-
-        <Field
-          label="Confirm Password"
-          placeholder="Confirm password"
-        />
-
-        <button style={primaryButton}>
-          Change Password
-        </button>
-
-      </Section>
-
-      {/* ================= TWO FACTOR ================= */}
-
-      <Section title="Two-Factor Authentication">
-
-        <Toggle
-          title="Enable Two-Factor Authentication"
-          subtitle="Protect your account using an authenticator app."
-          enabled
-        />
-
-        <Toggle
-          title="Email Verification"
-          subtitle="Require email verification for new logins."
-          enabled
-        />
-
-        <Toggle
-          title="SMS Verification"
-          subtitle="Receive verification codes by SMS."
-        />
-
-      </Section>
-
-      {/* ================= LOGIN SESSIONS ================= */}
-
-      <Section title="Active Sessions">
-
-        <Session
-          device="MacBook Pro"
-          browser="Chrome"
-          location="Mumbai, India"
-          status="Current Session"
-        />
-
-        <Session
-          device="iPhone 15"
-          browser="Safari"
-          location="Mumbai, India"
-          status="Active"
-        />
-
-        <Session
-          device="Windows Laptop"
-          browser="Edge"
-          location="Delhi, India"
-          status="Last Week"
-        />
-
-      </Section>
-
-      {/* ================= API ================= */}
-
-      <Section title="API Access">
-
-        <Toggle
-          title="Allow API Access"
-          subtitle="Enable external integrations."
-          enabled
-        />
-
-        <Toggle
-          title="Allow Third-Party Plugins"
-          subtitle="Permit approved third-party applications."
-        />
-
-      </Section>
-
-      {/* ================= PRIVACY ================= */}
-
-      <Section title="Privacy">
-
-        <Toggle
-          title="Encrypt Client Documents"
-          subtitle="Encrypt uploaded case documents."
-          enabled
-        />
-
-        <Toggle
-          title="Encrypt AI Conversations"
-          subtitle="Protect AI conversations with encryption."
-          enabled
-        />
-
-        <Toggle
-          title="Anonymous Analytics"
-          subtitle="Help improve Clausio with anonymous usage data."
-        />
-
-      </Section>
-
-      {/* ================= RECOVERY ================= */}
-
-      <Section title="Recovery">
-
-        <Field
-          label="Recovery Email"
-          placeholder="support@example.com"
-        />
-
-        <button
-          style={{
-            ...primaryButton,
-            marginTop: 18,
-          }}
-        >
-          Update Recovery Email
-        </button>
-
-      </Section>
-
-      {/* ================= DANGER ================= */}
-
-      <Section title="Danger Zone">
-
-        <div
-          style={{
-            border: '1px solid #fecaca',
-            background: '#fef2f2',
-            borderRadius: 14,
-            padding: 22,
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-              color: '#dc2626',
-            }}
-          >
-            Logout From All Devices
-          </h3>
-
-          <p
-            style={{
-              color: '#7f1d1d',
-              marginBottom: 20,
-            }}
-          >
-            Sign out from every active session. You will need to login again on all devices.
-          </p>
-
-          <button
-            style={{
-              background: '#dc2626',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 10,
-              padding: '12px 18px',
-              cursor: 'pointer',
-              fontWeight: 600,
-            }}
-          >
-            Logout Everywhere
-          </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 400 }}>
+          <Field label="Current Password">
+            <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} style={inputStyle} placeholder="Enter current password" />
+          </Field>
+          <Field label="New Password">
+            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} style={inputStyle} placeholder="Min. 8 characters" />
+          </Field>
+          <Field label="Confirm New Password">
+            <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} style={inputStyle} placeholder="Re-enter new password" />
+          </Field>
         </div>
 
-      </Section>
+        <button
+          onClick={handleChangePassword}
+          disabled={saving}
+          style={{ marginTop: 20, background: saving ? '#93c5fd' : '#2563eb', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', cursor: saving ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}
+        >
+          {saving ? 'Changing...' : 'Change Password'}
+        </button>
+      </div>
 
+      {/* Security Tips */}
+      <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12, padding: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 10 }}>🔐 Security Tips</div>
+        {[
+          'Use a strong password with letters, numbers and symbols',
+          'Never share your password with anyone',
+          'Log out when using shared computers',
+          'Your client data is encrypted and stored securely in India',
+        ].map((tip, i) => (
+          <div key={i} style={{ fontSize: 12, color: '#78350f', marginBottom: 6, display: 'flex', gap: 6 }}>
+            <span>•</span> {tip}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
 
-/* ---------------------------------------------------------------- */
-
-function Section({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: 36 }}>
-      <h3
-        style={{
-          marginTop: 0,
-          marginBottom: 18,
-          color: '#0f172a',
-          fontSize: 18,
-        }}
-      >
-        {title}
-      </h3>
-
+    <div>
+      <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 600, color: '#374151' }}>{label}</label>
       {children}
     </div>
   )
 }
 
-function Field({
-  label,
-  placeholder,
-}: {
-  label: string
-  placeholder: string
-}) {
-  return (
-    <div style={{ marginBottom: 18 }}>
-      <label
-        style={{
-          display: 'block',
-          marginBottom: 8,
-          fontWeight: 600,
-          color: '#334155',
-          fontSize: 13,
-        }}
-      >
-        {label}
-      </label>
-
-      <input
-        type="password"
-        placeholder={placeholder}
-        style={{
-          width: '100%',
-          height: 42,
-          border: '1px solid #dbe3ef',
-          borderRadius: 10,
-          padding: '0 14px',
-          fontSize: 14,
-          outline: 'none',
-          boxSizing: 'border-box',
-        }}
-      />
-    </div>
-  )
-}
-
-function Toggle({
-  title,
-  subtitle,
-  enabled,
-}: {
-  title: string
-  subtitle: string
-  enabled?: boolean
-}) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '18px 0',
-        borderBottom: '1px solid #e2e8f0',
-      }}
-    >
-      <div>
-        <div
-          style={{
-            fontWeight: 600,
-            color: '#0f172a',
-          }}
-        >
-          {title}
-        </div>
-
-        <div
-          style={{
-            marginTop: 4,
-            color: '#64748b',
-            fontSize: 13,
-          }}
-        >
-          {subtitle}
-        </div>
-      </div>
-
-      <div
-        style={{
-          width: 46,
-          height: 24,
-          borderRadius: 999,
-          background: enabled ? '#2563eb' : '#cbd5e1',
-          position: 'relative',
-          cursor: 'pointer',
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            top: 3,
-            left: enabled ? 25 : 3,
-            width: 18,
-            height: 18,
-            borderRadius: '50%',
-            background: '#fff',
-          }}
-        />
-      </div>
-    </div>
-  )
-}
-
-function Session({
-  device,
-  browser,
-  location,
-  status,
-}: {
-  device: string
-  browser: string
-  location: string
-  status: string
-}) {
-  return (
-    <div
-      style={{
-        borderBottom: '1px solid #e2e8f0',
-        padding: '16px 0',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-      }}
-    >
-      <div>
-        <div
-          style={{
-            fontWeight: 600,
-            color: '#0f172a',
-          }}
-        >
-          {device}
-        </div>
-
-        <div
-          style={{
-            marginTop: 4,
-            color: '#64748b',
-            fontSize: 13,
-          }}
-        >
-          {browser} • {location}
-        </div>
-      </div>
-
-      <span
-        style={{
-          background: '#eff6ff',
-          color: '#2563eb',
-          padding: '6px 12px',
-          borderRadius: 999,
-          fontSize: 12,
-          fontWeight: 600,
-        }}
-      >
-        {status}
-      </span>
-    </div>
-  )
-}
-
-const primaryButton: React.CSSProperties = {
-  background: '#2563eb',
-  color: '#fff',
-  border: 'none',
-  borderRadius: 10,
-  padding: '12px 22px',
-  cursor: 'pointer',
-  fontWeight: 600,
-  fontSize: 14,
+const inputStyle: React.CSSProperties = {
+  width: '100%', height: 40, border: '1px solid #e2e8f0', borderRadius: 8,
+  padding: '0 12px', fontSize: 13, outline: 'none', background: '#fff',
+  boxSizing: 'border-box', color: '#0f172a', fontFamily: 'inherit',
 }

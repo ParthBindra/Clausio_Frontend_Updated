@@ -1,352 +1,174 @@
 'use client'
 
+import { useState, useEffect } from 'react'
+
+const STORAGE_KEY = 'clausio_legal_settings'
+
+const COURTS = [
+  'Supreme Court of India',
+  'High Court',
+  'District Court',
+  'Family Court',
+  'Sessions Court',
+  'Commercial Court',
+  'Consumer Forum',
+  'Labour Court',
+  'NCLT',
+  'Income Tax Tribunal (ITAT)',
+]
+
+const PRACTICE_AREAS = [
+  'Family Law', 'Criminal Law', 'Civil Litigation', 'Corporate Law',
+  'GST / Indirect Tax', 'Income Tax', 'NI Act 138', 'Arbitration',
+  'Consumer Protection', 'RERA', 'Labour Law', 'Constitutional Law',
+]
+
+const DEFAULT = {
+  primaryCourt:        'High Court',
+  preferredCourts:     [] as string[],
+  autoAssignCaseType:  true,
+  autoGenerateSummary: true,
+  autoTimeline:        true,
+  limitationAlerts:    true,
+  hearingReminders:    true,
+  reminderDaysBefore:  '3',
+  defaultPriority:     'Medium',
+  defaultStage:        'Filing',
+}
+
 export default function LegalSettings() {
+  const [s,     setS]     = useState(DEFAULT)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) setS({ ...DEFAULT, ...JSON.parse(stored) })
+  }, [])
+
+  function update(key: string, value: any) {
+    setS(prev => ({ ...prev, [key]: value }))
+    setSaved(false)
+  }
+
+  function toggleCourt(court: string) {
+    setS(prev => ({
+      ...prev,
+      preferredCourts: prev.preferredCourts.includes(court)
+        ? prev.preferredCourts.filter(c => c !== court)
+        : [...prev.preferredCourts, court]
+    }))
+    setSaved(false)
+  }
+
+  function handleSave() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(s))
+    setSaved(true)
+    setTimeout(() => setSaved(false), 3000)
+  }
+
   return (
     <div>
-
-      {/* ================= Header ================= */}
-
-      <div style={{ marginBottom: 30 }}>
-        <h2
-          style={{
-            margin: 0,
-            fontSize: 24,
-            fontWeight: 700,
-            color: '#0f172a',
-          }}
-        >
-          Legal Preferences
-        </h2>
-
-        <p
-          style={{
-            marginTop: 6,
-            color: '#64748b',
-            fontSize: 14,
-          }}
-        >
-          Configure courts, jurisdictions, drafting standards and legal AI behaviour.
-        </p>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#0f172a' }}>Legal Preferences</h2>
+        <p style={{ marginTop: 4, color: '#64748b', fontSize: 13 }}>Configure court preferences and case defaults.</p>
       </div>
 
-      {/* ================= Court Settings ================= */}
+      {saved && <Banner message="Legal settings saved." />}
 
-      <Section title="Default Court">
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 20,
-          }}
-        >
-          <Field
-            label="Court Type"
-            value="Family Court"
-          />
-
-          <Field
-            label="Jurisdiction"
-            value="Mumbai"
-          />
-
-          <Field
-            label="State"
-            value="Maharashtra"
-          />
-
-          <Field
-            label="Country"
-            value="India"
-          />
+      {/* Court Preferences */}
+      <Section title="Preferred Courts">
+        <p style={{ fontSize: 12, color: '#64748b', marginBottom: 12, marginTop: -8 }}>Select courts you practise in. AI will prioritise relevant procedures.</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {COURTS.map(court => {
+            const selected = s.preferredCourts.includes(court)
+            return (
+              <button key={court} onClick={() => toggleCourt(court)}
+                style={{ padding: '6px 12px', borderRadius: 20, border: `1px solid ${selected ? '#2563eb' : '#e2e8f0'}`, background: selected ? '#eff6ff' : '#f8fafc', color: selected ? '#1e40af' : '#475569', fontSize: 12, fontWeight: selected ? 600 : 400, cursor: 'pointer', fontFamily: 'inherit' }}>
+                {selected && '✓ '}{court}
+              </button>
+            )
+          })}
         </div>
-
       </Section>
 
-      {/* ================= Drafting ================= */}
-
-      <Section title="Drafting Preferences">
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 20,
-          }}
-        >
-          <Field
-            label="Drafting Language"
-            value="English"
-          />
-
-          <Field
-            label="Legal Tone"
-            value="Professional"
-          />
-
-          <Field
-            label="Citation Style"
-            value="Indian Legal Citation"
-          />
-
-          <Field
-            label="Default Petition"
-            value="Family Petition"
-          />
+      {/* Case Defaults */}
+      <Section title="Case Defaults">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div>
+            <label style={labelStyle}>Default Priority</label>
+            <select value={s.defaultPriority} onChange={e => update('defaultPriority', e.target.value)} style={inputStyle}>
+              <option>High</option>
+              <option>Medium</option>
+              <option>Low</option>
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Default Stage</label>
+            <select value={s.defaultStage} onChange={e => update('defaultStage', e.target.value)} style={inputStyle}>
+              <option>Filing</option>
+              <option>Service / Notice</option>
+              <option>Written Statement</option>
+              <option>Evidence</option>
+              <option>Arguments</option>
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Hearing Reminder (days before)</label>
+            <select value={s.reminderDaysBefore} onChange={e => update('reminderDaysBefore', e.target.value)} style={inputStyle}>
+              <option value="1">1 day before</option>
+              <option value="2">2 days before</option>
+              <option value="3">3 days before</option>
+              <option value="7">1 week before</option>
+            </select>
+          </div>
         </div>
-
       </Section>
 
-      {/* ================= AI Behaviour ================= */}
-
-      <Section title="Legal AI Behaviour">
-
-        <Toggle
-          title="Suggest Case Laws"
-          subtitle="AI recommends relevant precedents while drafting."
-          enabled
-        />
-
-        <Toggle
-          title="Automatic Citation Formatting"
-          subtitle="Format judgments using standard Indian citation style."
-          enabled
-        />
-
-        <Toggle
-          title="Generate Alternative Arguments"
-          subtitle="Suggest additional legal arguments automatically."
-          enabled
-        />
-
-        <Toggle
-          title="Judge Behaviour Analysis"
-          subtitle="Analyse judge history before hearings."
-          enabled
-        />
-
-        <Toggle
-          title="Risk Prediction"
-          subtitle="Estimate litigation risks using AI."
-        />
-
+      {/* Automation */}
+      <Section title="Automation">
+        <Toggle title="Auto-detect Case Type"     subtitle="AI automatically classifies case type on creation."    value={s.autoAssignCaseType}  onChange={v => update('autoAssignCaseType', v)} />
+        <Toggle title="Auto-generate Summary"     subtitle="Generate AI summary when a new case is created."       value={s.autoGenerateSummary} onChange={v => update('autoGenerateSummary', v)} />
+        <Toggle title="Auto-build Timeline"       subtitle="Automatically extract events into case timeline."       value={s.autoTimeline}        onChange={v => update('autoTimeline', v)} />
+        <Toggle title="Limitation Period Alerts"  subtitle="Alert when limitation period is approaching."           value={s.limitationAlerts}    onChange={v => update('limitationAlerts', v)} />
+        <Toggle title="Hearing Reminders"         subtitle="Remind before each scheduled hearing."                 value={s.hearingReminders}    onChange={v => update('hearingReminders', v)} />
       </Section>
 
-      {/* ================= Templates ================= */}
-
-      <Section title="Default Templates">
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 20,
-          }}
-        >
-          <Field
-            label="Petition Template"
-            value="Standard Family Court"
-          />
-
-          <Field
-            label="Affidavit Template"
-            value="General Affidavit"
-          />
-
-          <Field
-            label="Notice Template"
-            value="Legal Notice"
-          />
-
-          <Field
-            label="Reply Template"
-            value="Written Statement"
-          />
-        </div>
-
-      </Section>
-
-      {/* ================= Numbering ================= */}
-
-      <Section title="Case Number Format">
-
-        <Field
-          label="Case Prefix"
-          value="FC"
-        />
-
-        <Field
-          label="Default Format"
-          value="FC/0000/2026"
-        />
-
-      </Section>
-
-      {/* ================= Save ================= */}
-
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          marginTop: 35,
-        }}
-      >
-        <button
-          style={{
-            background: '#2563eb',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 10,
-            padding: '12px 22px',
-            cursor: 'pointer',
-            fontWeight: 600,
-            fontSize: 14,
-          }}
-        >
-          <i
-            className="ti ti-device-floppy"
-            style={{ marginRight: 8 }}
-          />
-
-          Save Legal Settings
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 28 }}>
+        <button onClick={handleSave} style={saveBtn}>
+          <i className="ti ti-device-floppy" /> Save Legal Settings
         </button>
       </div>
-
     </div>
   )
 }
 
-/* ---------------------------------------------------------------- */
-
-function Section({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div
-      style={{
-        marginBottom: 36,
-      }}
-    >
-      <h3
-        style={{
-          marginTop: 0,
-          marginBottom: 18,
-          color: '#0f172a',
-          fontSize: 18,
-        }}
-      >
-        {title}
-      </h3>
-
+    <div style={{ marginBottom: 28 }}>
+      <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 14, paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>{title}</div>
       {children}
     </div>
   )
 }
 
-function Field({
-  label,
-  value,
-}: {
-  label: string
-  value: string
-}) {
+function Toggle({ title, subtitle, value, onChange }: { title: string; subtitle: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
-    <div>
-      <label
-        style={{
-          display: 'block',
-          marginBottom: 8,
-          fontWeight: 600,
-          color: '#334155',
-          fontSize: 13,
-        }}
-      >
-        {label}
-      </label>
-
-      <input
-        defaultValue={value}
-        style={{
-          width: '100%',
-          height: 42,
-          borderRadius: 10,
-          border: '1px solid #dbe3ef',
-          padding: '0 14px',
-          fontSize: 14,
-          outline: 'none',
-          boxSizing: 'border-box',
-        }}
-      />
-    </div>
-  )
-}
-
-function Toggle({
-  title,
-  subtitle,
-  enabled,
-}: {
-  title: string
-  subtitle: string
-  enabled?: boolean
-}) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '18px 0',
-        borderBottom: '1px solid #e2e8f0',
-      }}
-    >
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 0', borderBottom: '1px solid #f8fafc' }}>
       <div>
-        <div
-          style={{
-            fontWeight: 600,
-            color: '#0f172a',
-          }}
-        >
-          {title}
-        </div>
-
-        <div
-          style={{
-            marginTop: 4,
-            color: '#64748b',
-            fontSize: 13,
-          }}
-        >
-          {subtitle}
-        </div>
+        <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{title}</div>
+        <div style={{ marginTop: 3, color: '#64748b', fontSize: 12 }}>{subtitle}</div>
       </div>
-
-      <div
-        style={{
-          width: 46,
-          height: 24,
-          borderRadius: 999,
-          background: enabled ? '#2563eb' : '#cbd5e1',
-          position: 'relative',
-          cursor: 'pointer',
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            top: 3,
-            left: enabled ? 25 : 3,
-            width: 18,
-            height: 18,
-            borderRadius: '50%',
-            background: '#fff',
-          }}
-        />
+      <div onClick={() => onChange(!value)} style={{ width: 44, height: 24, borderRadius: 999, background: value ? '#2563eb' : '#cbd5e1', position: 'relative', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0, marginLeft: 16 }}>
+        <div style={{ position: 'absolute', top: 3, left: value ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
       </div>
     </div>
   )
 }
+
+function Banner({ message }: { message: string }) {
+  return <div style={{ marginBottom: 20, padding: '10px 14px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, fontSize: 13, color: '#15803d' }}>✓ {message}</div>
+}
+
+const saveBtn: React.CSSProperties = { background: '#2563eb', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 24px', cursor: 'pointer', fontWeight: 600, fontSize: 14, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 8 }
+const labelStyle: React.CSSProperties = { display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 600, color: '#374151' }
+const inputStyle: React.CSSProperties = { width: '100%', height: 40, border: '1px solid #e2e8f0', borderRadius: 8, padding: '0 12px', fontSize: 13, outline: 'none', background: '#fff', boxSizing: 'border-box', fontFamily: 'inherit' }

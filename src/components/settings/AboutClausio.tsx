@@ -3,345 +3,50 @@
 export default function AboutClausio() {
   return (
     <div>
-
-      {/* ================= HEADER ================= */}
-
-      <div style={{ marginBottom: 30 }}>
-        <h2
-          style={{
-            margin: 0,
-            fontSize: 24,
-            fontWeight: 700,
-            color: '#0f172a',
-          }}
-        >
-          About Clausio
-        </h2>
-
-        <p
-          style={{
-            marginTop: 6,
-            color: '#64748b',
-            fontSize: 14,
-          }}
-        >
-          Product information, version details and support resources.
-        </p>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#0f172a' }}>About Clausio</h2>
+        <p style={{ marginTop: 4, color: '#64748b', fontSize: 13 }}>Version information and support.</p>
       </div>
 
-      {/* ================= APP CARD ================= */}
+      {/* Logo card */}
+      <div style={{ padding: 24, background: 'linear-gradient(135deg,#0f172a,#1e3a8a)', borderRadius: 16, marginBottom: 24, color: '#fff', textAlign: 'center' }}>
+        <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-1px', marginBottom: 6 }}>Clausio</div>
+        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>Every clause. Intelligently handled.</div>
+        <div style={{ marginTop: 12, display: 'inline-block', padding: '4px 12px', background: 'rgba(59,130,246,0.3)', borderRadius: 20, fontSize: 11, color: '#93c5fd', border: '1px solid rgba(59,130,246,0.4)' }}>
+          Version 1.0.0 — Beta
+        </div>
+      </div>
 
-      <div
-        style={{
-          border: '1px solid #e2e8f0',
-          borderRadius: 16,
-          padding: 28,
-          background: '#fff',
-          marginBottom: 28,
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 20,
-          }}
-        >
-          <div
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: 16,
-              background: '#2563eb',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#fff',
-              fontWeight: 700,
-              fontSize: 30,
-            }}
-          >
-            C
+      {/* Info cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+        {[
+          { label: 'Platform',    value: 'Clausio Legal Intelligence' },
+          { label: 'Version',     value: '1.0.0 Beta'                },
+          { label: 'AI Engine',   value: 'Llama 3.3 70B via Groq'    },
+          { label: 'Data Centre', value: 'India (Mumbai)'             },
+          { label: 'Compliance',  value: 'DPDP Act 2023 compliant'    },
+          { label: 'Encryption',  value: 'AES-256 at rest & transit'  },
+        ].map((item, i) => (
+          <div key={i} style={{ padding: '12px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{item.label}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{item.value}</div>
           </div>
-
-          <div>
-            <h3
-              style={{
-                margin: 0,
-                fontSize: 24,
-                color: '#0f172a',
-              }}
-            >
-              Clausio
-            </h3>
-
-            <p
-              style={{
-                marginTop: 6,
-                color: '#64748b',
-              }}
-            >
-              AI Operating System for Lawyers
-            </p>
-
-            <span
-              style={{
-                display: 'inline-block',
-                marginTop: 8,
-                padding: '6px 12px',
-                borderRadius: 999,
-                background: '#eff6ff',
-                color: '#2563eb',
-                fontWeight: 600,
-                fontSize: 12,
-              }}
-            >
-              Version 1.0.0 Beta
-            </span>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* ================= INFORMATION ================= */}
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 22,
-        }}
-      >
-        <InfoCard
-          title="Application"
-          value="Clausio"
-        />
-
-        <InfoCard
-          title="Version"
-          value="1.0.0 Beta"
-        />
-
-        <InfoCard
-          title="Build"
-          value="2026.07.15"
-        />
-
-        <InfoCard
-          title="License"
-          value="Commercial"
-        />
-
-        <InfoCard
-          title="Developed By"
-          value="Clausio Technologies Pvt. Ltd."
-        />
-
-        <InfoCard
-          title="Founder"
-          value="Parth Bindra"
-        />
-
-        <InfoCard
-          title="Support Email"
-          value="support@clausio.ai"
-        />
-
-        <InfoCard
-          title="Website"
-          value="www.clausio.ai"
-        />
+      {/* Support */}
+      <div style={{ padding: 20, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, marginBottom: 16 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#1e40af', marginBottom: 10 }}>📧 Support</div>
+        <div style={{ fontSize: 13, color: '#1e40af' }}>support@clausio.io</div>
+        <div style={{ fontSize: 12, color: '#3b82f6', marginTop: 4 }}>Response within 24 hours on business days</div>
       </div>
 
-      {/* ================= FEATURES ================= */}
-
-      <div
-        style={{
-          marginTop: 34,
-          border: '1px solid #e2e8f0',
-          borderRadius: 16,
-          padding: 24,
-        }}
-      >
-        <h3
-          style={{
-            marginTop: 0,
-            color: '#0f172a',
-          }}
-        >
-          Core Modules
-        </h3>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2,1fr)',
-            gap: 12,
-            marginTop: 18,
-          }}
-        >
-          <Feature text="AI Drafting" />
-          <Feature text="Legal Research" />
-          <Feature text="Strategy Engine" />
-          <Feature text="Financial Intelligence" />
-          <Feature text="Case Readiness" />
-          <Feature text="Client Communication" />
-          <Feature text="AI Analysis" />
-          <Feature text="Hearings Management" />
-        </div>
-      </div>
-
-      {/* ================= LINKS ================= */}
-
-      <div
-        style={{
-          marginTop: 34,
-          border: '1px solid #e2e8f0',
-          borderRadius: 16,
-          padding: 24,
-        }}
-      >
-        <h3
-          style={{
-            marginTop: 0,
-            color: '#0f172a',
-          }}
-        >
-          Resources
-        </h3>
-
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
-            marginTop: 18,
-          }}
-        >
-          <Resource text="Documentation" />
-          <Resource text="Release Notes" />
-          <Resource text="Privacy Policy" />
-          <Resource text="Terms of Service" />
-          <Resource text="Report a Bug" />
-          <Resource text="Contact Support" />
-        </div>
-      </div>
-
-      {/* ================= FOOTER ================= */}
-
-      <div
-        style={{
-          marginTop: 36,
-          textAlign: 'center',
-          color: '#94a3b8',
-          fontSize: 13,
-        }}
-      >
-        © 2026 Clausio Technologies Pvt. Ltd.
-        <br />
-        Every Clause. Intelligently Handled.
-      </div>
-
-    </div>
-  )
-}
-
-/* ---------------------------------------------------------------- */
-
-function InfoCard({
-  title,
-  value,
-}: {
-  title: string
-  value: string
-}) {
-  return (
-    <div
-      style={{
-        border: '1px solid #e2e8f0',
-        borderRadius: 12,
-        padding: 18,
-      }}
-    >
-      <div
-        style={{
-          color: '#94a3b8',
-          fontSize: 12,
-        }}
-      >
-        {title}
-      </div>
-
-      <div
-        style={{
-          marginTop: 8,
-          color: '#0f172a',
-          fontWeight: 600,
-          fontSize: 15,
-        }}
-      >
-        {value}
+      {/* Legal */}
+      <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.6 }}>
+        © 2024-2025 Clausio Technologies Private Limited. All rights reserved.
+        Clausio is an AI-assisted legal tool. It does not constitute legal advice.
+        Advocates are responsible for verifying all AI-generated content before use in court.
       </div>
     </div>
-  )
-}
-
-function Feature({
-  text,
-}: {
-  text: string
-}) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-      }}
-    >
-      <i
-        className="ti ti-circle-check"
-        style={{
-          color: '#22c55e',
-          fontSize: 18,
-        }}
-      />
-
-      <span
-        style={{
-          color: '#334155',
-          fontSize: 14,
-        }}
-      >
-        {text}
-      </span>
-    </div>
-  )
-}
-
-function Resource({
-  text,
-}: {
-  text: string
-}) {
-  return (
-    <button
-      style={{
-        border: '1px solid #e2e8f0',
-        background: '#fff',
-        borderRadius: 10,
-        padding: '12px 16px',
-        textAlign: 'left',
-        cursor: 'pointer',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        fontSize: 14,
-        color: '#334155',
-      }}
-    >
-      {text}
-
-      <i className="ti ti-chevron-right" />
-    </button>
   )
 }

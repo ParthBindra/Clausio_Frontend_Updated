@@ -1,1307 +1,207 @@
 'use client'
 
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useCaseStore } from '@/lib/store'
 import { aiApi, parseAiJson } from '@/lib/api'
 
-interface CrossQuestion {
-  category: string
-  question: string
-}
-
-const stats = [
-  {
-    title: 'Witnesses',
-    value: '4',
-    icon: 'ti-users',
-    color: '#3b82f6',
-  },
-  {
-    title: 'Contradictions',
-    value: '12',
-    icon: 'ti-alert-triangle',
-    color: '#dc2626',
-  },
-  {
-    title: 'Questions',
-    value: '86',
-    icon: 'ti-help',
-    color: '#16a34a',
-  },
-  {
-    title: 'Credibility',
-    value: '74%',
-    icon: 'ti-shield-check',
-    color: '#f59e0b',
-  },
-]
+const WITNESS_TYPES = ['Petitioner', 'Respondent', 'Independent Witness', 'Expert Witness', 'Character Witness']
 
 export default function CrossExamination() {
   const { selectedCaseId } = useCaseStore()
-  const [questions, setQuestions] = useState<CrossQuestion[] | null>(null)
-  const [rawText,   setRawText]   = useState('')
-  const [loading,   setLoading]   = useState(false)
-  const [error,     setError]     = useState('')
-  const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
 
-  async function generateQuestions() {
-    if (!selectedCaseId) { setError('Select a case first.'); return }
+  const [witnessName,    setWitnessName]    = useState('')
+  const [witnessType,    setWitnessType]    = useState('Respondent')
+  const [witnessRole,    setWitnessRole]    = useState('')
+  const [statement,      setStatement]      = useState('')
+  const [loading,        setLoading]        = useState(false)
+  const [error,          setError]          = useState('')
+  const [result,         setResult]         = useState<any>(null)
+  const [rawText,        setRawText]        = useState('')
+  const [copiedIdx,      setCopiedIdx]      = useState<number | null>(null)
+  const [activeCategory, setActiveCategory] = useState('all')
+
+  async function generate() {
+    if (!selectedCaseId) { setError('Please select a case from the dashboard first.'); return }
+    if (!witnessName.trim()) { setError('Please enter the witness name.'); return }
     setLoading(true)
     setError('')
+    setResult(null)
+    setRawText('')
     try {
       const res = await aiApi.getWitness(selectedCaseId)
-      const parsed = parseAiJson<CrossQuestion[]>(res.intelligence ?? res.result ?? "")
-      setQuestions(parsed)
-      setRawText(parsed ? "" : res.intelligence ?? res.result ?? "")
+      const raw = res.intelligence ?? res.result ?? ''
+      const parsed = parseAiJson<any>(raw)
+      if (parsed) {
+        setResult(parsed)
+      } else {
+        setRawText(raw)
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to generate questions')
+      setError(err.message || 'Failed to generate questions. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  function copyQuestion(idx: number, text: string) {
+  function copyQ(idx: number, text: string) {
     navigator.clipboard.writeText(text)
     setCopiedIdx(idx)
-    setTimeout(() => setCopiedIdx(null), 1500)
+    setTimeout(() => setCopiedIdx(null), 2000)
   }
+
+  function copyAll() {
+    const allQs = getAllQuestions().map((q, i) => `${i + 1}. ${q}`).join('\n')
+    navigator.clipboard.writeText(`Cross Examination Questions — ${witnessName}\n\n${allQs}`)
+  }
+
+  function getAllQuestions(): string[] {
+    if (!result) return []
+    const qs: string[] = []
+    if (result.crossExaminationQuestions) {
+      result.crossExaminationQuestions.forEach((q: string) => qs.push(q))
+    }
+    if (result.witnesses) {
+      result.witnesses.forEach((w: any) => {
+        if (w.crossExamRisks) w.crossExamRisks.forEach((r: string) => qs.push(r))
+      })
+    }
+    return qs
+  }
+
+  const questions = getAllQuestions()
+  const categories = ['all', 'credibility', 'contradiction', 'financial', 'timeline']
 
   return (
     <div>
-
-      {/* ================= HEADER ================= */}
-
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 24,
-        }}
-      >
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 26,
-              fontWeight: 700,
-              letterSpacing: '-0.3px', color: '#0f172a',
-            }}
-          >
-            AI Cross Examination
-          </h2>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Cross Examination</h2>
+          <p style={{ marginTop: 4, color: '#64748b', fontSize: 13 }}>AI generates court-ready cross-examination questions based on case facts and witness profile.</p>
+        </div>
+        {result && (
+          <button onClick={copyAll} style={{ height: 36, padding: '0 14px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#15803d', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <i className="ti ti-copy" /> Copy All Questions
+          </button>
+        )}
+      </div>
 
-          <p
-            style={{
-              marginTop: 8,
-              color: '#64748b',
-              lineHeight: 1.6,
-            }}
-          >
-            Upload witness statements, detect contradictions and generate
-            courtroom-ready cross-examination questions using AI.
-          </p>
+      {/* Witness form */}
+      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 20, marginBottom: 20 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 14 }}>Witness Details</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div>
+            <label style={labelSt}>Witness Name *</label>
+            <input value={witnessName} onChange={e => setWitnessName(e.target.value)} placeholder="Dr. Mehta / Respondent's Father" style={inputSt} />
+          </div>
+          <div>
+            <label style={labelSt}>Witness Type *</label>
+            <select value={witnessType} onChange={e => setWitnessType(e.target.value)} style={inputSt}>
+              {WITNESS_TYPES.map(t => <option key={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={labelSt}>Role in Case</label>
+            <input value={witnessRole} onChange={e => setWitnessRole(e.target.value)} placeholder="Treating doctor / Respondent's employer" style={inputSt} />
+          </div>
+          <div>
+            <label style={labelSt}>Key Statement (optional)</label>
+            <input value={statement} onChange={e => setStatement(e.target.value)} placeholder="What this witness claims..." style={inputSt} />
+          </div>
         </div>
 
-        <button
-          onClick={generateQuestions}
-          disabled={loading}
-          style={{
-            border: 'none',
-            background: loading ? '#93c5fd' : '#3b82f6',
-            color: '#fff',
-            padding: '12px 20px',
-            borderRadius: 10,
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontWeight: 600,
-          }}
-        >
-          <i
-            className="ti ti-sparkles"
-            style={{ marginRight: 8 }}
-          />
-          {loading ? 'Analysing...' : 'Analyze Witness'}
+        {error && (
+          <div style={{ marginTop: 12, padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626' }}>
+            {error}
+          </div>
+        )}
+
+        <button onClick={generate} disabled={loading}
+          style={{ marginTop: 16, height: 44, padding: '0 24px', background: loading ? '#93c5fd' : '#2563eb', color: '#fff', border: 'none', borderRadius: 10, cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 14, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <i className="ti ti-sparkles" />
+          {loading ? 'Generating Questions...' : 'Generate Cross-Examination Questions'}
         </button>
       </div>
 
-      {error && (
-        <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', marginBottom: 20 }}>
-          {error}
+      {/* Loading */}
+      {loading && (
+        <div style={{ textAlign: 'center', padding: 40, color: '#7c3aed' }}>
+          <i className="ti ti-loader-2" style={{ fontSize: 32, display: 'block', marginBottom: 10, animation: 'spin 1s linear infinite' }} />
+          <div style={{ fontSize: 14, fontWeight: 500 }}>AI is analysing case facts and generating questions...</div>
+          <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>This may take 15-20 seconds</div>
         </div>
       )}
 
-      {/* ================= DASHBOARD ================= */}
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4,1fr)',
-          gap: 18,
-          marginBottom: 28,
-        }}
-      >
-        {stats.map((item) => (
-          <div
-            key={item.title}
-            style={{
-              background: 'rgba(255,255,255,0.4)',
-              border: '1px solid rgba(0,0,0,0.05)',
-              borderRadius: 16,
-              padding: 20,
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 13,
-                  color: '#64748b',
-                }}
-              >
-                {item.title}
-              </span>
-
-              <i
-                className={`ti ${item.icon}`}
-                style={{
-                  color: item.color,
-                  fontSize: 22,
-                }}
-              />
-            </div>
-
-            <div
-              style={{
-                marginTop: 18,
-                fontSize: 30,
-                fontWeight: 700,
-                color: '#0f172a',
-              }}
-            >
-              {item.value}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* ================= WITNESS INFORMATION ================= */}
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 24,
-          marginBottom: 30,
-        }}
-      >
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            padding: 24,
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-              marginBottom: 22,
-            }}
-          >
-            Witness Information
-          </h3>
-
-          <div
-            style={{
-              display: 'grid',
-              gap: 18,
-            }}
-          >
-            <Field label="Witness Name">
-              <input
-                style={inputStyle}
-                placeholder="Enter witness name"
-              />
-            </Field>
-
-            <Field label="Witness Type">
-              <select style={inputStyle}>
-                <option>Petitioner</option>
-                <option>Respondent</option>
-                <option>Independent Witness</option>
-                <option>Expert Witness</option>
-              </select>
-            </Field>
-
-            <Field label="Relation to Case">
-              <input
-                style={inputStyle}
-                placeholder="Father, Mother, Friend..."
-              />
-            </Field>
-
-            <Field label="Statement Summary">
-              <textarea
-                rows={5}
-                placeholder="Brief witness summary..."
-                style={{
-                  ...inputStyle,
-                  height: 'auto',
-                  paddingTop: 12,
-                  resize: 'vertical',
-                }}
-              />
-            </Field>
-          </div>
+      {/* Raw text fallback */}
+      {rawText && !loading && (
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 20 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 12 }}>Cross-Examination Questions</div>
+          <pre style={{ fontSize: 13, color: '#334155', lineHeight: 1.8, whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>{rawText}</pre>
         </div>
+      )}
 
-        {/* ================= UPLOAD ================= */}
-
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            padding: 24,
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-              marginBottom: 22,
-            }}
-          >
-            Upload Witness Documents
-          </h3>
-
-          <div
-            style={{
-              border: '2px dashed #cbd5e1',
-              borderRadius: 14,
-              padding: 45,
-              textAlign: 'center',
-              background: 'rgba(255,255,255,0.6)',
-            }}
-          >
-            <i
-              className="ti ti-cloud-upload"
-              style={{
-                fontSize: 48,
-                color: '#3b82f6',
-              }}
-            />
-
-            <h3
-              style={{
-                marginTop: 16,
-              }}
-            >
-              Drag & Drop Files
-            </h3>
-
-            <p
-              style={{
-                color: '#64748b',
-                lineHeight: 1.7,
-              }}
-            >
-              Upload Affidavit, Police Statement,
-              WhatsApp Chats, Audio Transcript,
-              Evidence or Court Documents.
-            </p>
-
-            <button
-              style={{
-                marginTop: 18,
-                border: 'none',
-                background: '#3b82f6',
-                color: '#fff',
-                padding: '12px 22px',
-                borderRadius: 10,
-                cursor: 'pointer',
-                fontWeight: 600,
-              }}
-            >
-              Choose File
-            </button>
-          </div>
-        </div>
-      </div>
-            {/* ================= AI ANALYSIS ================= */}
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1.2fr .8fr',
-          gap: 24,
-          marginBottom: 30,
-        }}
-      >
-        {/* Contradictions */}
-
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            overflow: 'hidden',
-          }}
-        >
-          <div
-            style={{
-              padding: '18px 22px',
-              borderBottom: '1px solid rgba(0,0,0,0.05)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <h3
-              style={{
-                margin: 0,
-              }}
-            >
-              AI Contradiction Detection
-            </h3>
-
-            <span
-              style={{
-                background: '#fee2e2',
-                color: '#dc2626',
-                padding: '5px 12px',
-                borderRadius: 999,
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-            >
-              12 Found
-            </span>
-          </div>
-
-          {[
-            {
-              title: 'Timeline Mismatch',
-              severity: 'High',
-              statement:
-                'Witness claims to be at home at 10:00 AM.',
-              evidence:
-                'Mobile tower records place the witness 18 km away.',
-            },
-            {
-              title: 'Financial Contradiction',
-              severity: 'Medium',
-              statement:
-                'Witness denies any monetary transaction.',
-              evidence:
-                'Bank statement shows multiple transfers.',
-            },
-            {
-              title: 'Communication Conflict',
-              severity: 'High',
-              statement:
-                'Witness denied any communication.',
-              evidence:
-                'WhatsApp chats show continuous conversation.',
-            },
-          ].map((item) => (
-            <div
-              key={item.title}
-              style={{
-                padding: 22,
-                borderBottom: '1px solid rgba(0,0,0,0.05)',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  marginBottom: 12,
-                }}
-              >
-                <strong>{item.title}</strong>
-
-                <span
-                  style={{
-                    background:
-                      item.severity === 'High'
-                        ? '#fee2e2'
-                        : '#fef3c7',
-
-                    color:
-                      item.severity === 'High'
-                        ? '#dc2626'
-                        : '#d97706',
-
-                    padding: '4px 10px',
-                    borderRadius: 999,
-                    fontSize: 12,
-                    fontWeight: 600,
-                  }}
-                >
-                  {item.severity}
-                </span>
-              </div>
-
-              <div
-                style={{
-                  marginBottom: 10,
-                  color: '#475569',
-                }}
-              >
-                <strong>Statement:</strong> {item.statement}
-              </div>
-
-              <div
-                style={{
-                  color: '#64748b',
-                  lineHeight: 1.7,
-                }}
-              >
-                <strong>Evidence:</strong> {item.evidence}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* AI Score */}
-
-        <div
-          style={{
-            display: 'grid',
-            gap: 20,
-          }}
-        >
-          <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-              border: '1px solid rgba(0,0,0,0.05)',
-              borderRadius: 16,
-              padding: 22,
-            }}
-          >
-            <h3
-              style={{
-                marginTop: 0,
-                marginBottom: 18,
-              }}
-            >
-              Credibility Score
-            </h3>
-
-            <div
-              style={{
-                width: 170,
-                height: 170,
-                margin: '0 auto',
-                borderRadius: '50%',
-                border: '12px solid #f59e0b',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                flexDirection: 'column',
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 40,
-                  fontWeight: 700,
-                }}
-              >
-                74%
-              </div>
-
-              <div
-                style={{
-                  color: '#64748b',
-                }}
-              >
-                Credible
-              </div>
-            </div>
-
-            <div
-              style={{
-                marginTop: 24,
-                display: 'grid',
-                gap: 12,
-              }}
-            >
-              <ScoreItem
-                title="Statement Consistency"
-                score="82%"
-              />
-
-              <ScoreItem
-                title="Evidence Match"
-                score="91%"
-              />
-
-              <ScoreItem
-                title="Timeline Accuracy"
-                score="69%"
-              />
-
-              <ScoreItem
-                title="Behaviour Pattern"
-                score="74%"
-              />
-            </div>
-          </div>
-
-          <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-              border: '1px solid rgba(0,0,0,0.05)',
-              borderRadius: 16,
-              padding: 22,
-            }}
-          >
-            <h3
-              style={{
-                marginTop: 0,
-                marginBottom: 18,
-              }}
-            >
-              AI Witness Insights
-            </h3>
-
-            <div
-              style={{
-                display: 'grid',
-                gap: 16,
-              }}
-            >
-              <Insight
-                title="Confidence"
-                value="Medium"
-              />
-
-              <Insight
-                title="Behaviour"
-                value="Defensive"
-              />
-
-              <Insight
-                title="Weakest Area"
-                value="Financial Records"
-              />
-
-              <Insight
-                title="Pressure Response"
-                value="Likely to contradict"
-              />
-
-              <Insight
-                title="AI Advice"
-                value="Begin with neutral questions before introducing documentary evidence."
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ================= RISK ANALYSIS ================= */}
-
-      <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-          border: '1px solid rgba(0,0,0,0.05)',
-          borderRadius: 16,
-          padding: 22,
-          marginBottom: 30,
-        }}
-      >
-        <h3
-          style={{
-            marginTop: 0,
-            marginBottom: 20,
-          }}
-        >
-          Behaviour & Risk Analysis
-        </h3>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4,1fr)',
-            gap: 18,
-          }}
-        >
-          <RiskCard
-            title="Risk of Evasion"
-            value="High"
-            color="#dc2626"
-          />
-
-          <RiskCard
-            title="Confidence"
-            value="Medium"
-            color="#f59e0b"
-          />
-
-          <RiskCard
-            title="Evidence Support"
-            value="Strong"
-            color="#16a34a"
-          />
-
-          <RiskCard
-            title="Cross Strategy"
-            value="Aggressive"
-            color="#2563eb"
-          />
-        </div>
-      </div>
-            {/* ================= CROSS EXAMINATION QUESTIONS ================= */}
-
-      <div
-        style={{
-          marginBottom: 30,
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 18,
-          }}
-        >
-          <h3
-            style={{
-              margin: 0,
-            }}
-          >
-            AI Generated Cross Examination Questions
-          </h3>
-
-          <button
-            onClick={generateQuestions}
-            disabled={loading}
-            style={{
-              border: 'none',
-              background: loading ? '#93c5fd' : '#3b82f6',
-              color: '#fff',
-              borderRadius: 10,
-              padding: '10px 18px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontWeight: 600,
-            }}
-          >
-            {loading ? 'Generating...' : 'Regenerate Questions'}
-          </button>
-        </div>
-
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            overflow: 'hidden',
-          }}
-        >
-          {loading && <div style={{ padding: 22, fontSize: 13, color: '#64748b' }}>Generating questions...</div>}
-
-          {!loading && !questions && !rawText && (
-            <div style={{ padding: 22, fontSize: 13, color: '#94a3b8' }}>Click Analyze Witness to generate cross-examination questions for the selected case.</div>
-          )}
-
-          {!loading && !questions && rawText && (
-            <div style={{ padding: 22, fontSize: 13, color: '#334155', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{rawText}</div>
-          )}
-
-          {!loading && questions && questions.map((item, index) => (
-            <div
-              key={index}
-              style={{
-                padding: 22,
-                borderBottom:
-                  index !== questions.length - 1
-                    ? '1px solid #e2e8f0'
-                    : 'none',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  marginBottom: 14,
-                }}
-              >
-                <span
-                  style={{
-                    background: 'rgba(59, 130, 246, 0.05)',
-                    color: '#3b82f6',
-                    padding: '5px 12px',
-                    borderRadius: 999,
-                    fontSize: 12,
-                    fontWeight: 600,
-                  }}
-                >
-                  {item.category}
-                </span>
-
-                <button
-                  onClick={() => copyQuestion(index, item.question)}
-                  style={{
-                    border: '1px solid rgba(0,0,0,0.05)',
-                    background: 'rgba(255,255,255,0.4)',
-                    borderRadius: 8,
-                    padding: '6px 12px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {copiedIdx === index ? 'Copied!' : 'Copy'}
-                </button>
-              </div>
-
-              <div
-                style={{
-                  fontWeight: 500,
-                  color: '#0f172a',
-                  lineHeight: 1.8,
-                }}
-              >
-                {item.question}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ================= FOLLOW-UP & TRAP QUESTIONS ================= */}
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 24,
-          marginBottom: 30,
-        }}
-      >
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            padding: 22,
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-              marginBottom: 18,
-            }}
-          >
-            Follow-up Questions
-          </h3>
-
-          {[
-            'Who else was present during the incident?',
-            'Can anyone independently verify your version?',
-            'Why was this omitted from your affidavit?',
-            'Did you inform anyone immediately afterwards?',
-            'Can you produce supporting evidence today?',
-          ].map((question) => (
-            <div
-              key={question}
-              style={{
-                padding: '12px 0',
-                borderBottom: '1px solid rgba(0,0,0,0.05)',
-              }}
-            >
-              {question}
-            </div>
-          ))}
-        </div>
-
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            padding: 22,
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-              marginBottom: 18,
-            }}
-          >
-            Trap Questions
-          </h3>
-
-          {[
-            'Would you like to correct your earlier statement?',
-            'Are you absolutely certain about the timeline?',
-            'Can you identify this bank transaction?',
-            'Why should the Court believe this version?',
-            'Would you like to explain this contradiction?',
-          ].map((question) => (
-            <div
-              key={question}
-              style={{
-                padding: '12px 0',
-                borderBottom: '1px solid rgba(0,0,0,0.05)',
-              }}
-            >
-              {question}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ================= EVIDENCE MAPPING ================= */}
-
-      <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-          border: '1px solid rgba(0,0,0,0.05)',
-          borderRadius: 16,
-          padding: 22,
-          marginBottom: 30,
-        }}
-      >
-        <h3
-          style={{
-            marginTop: 0,
-            marginBottom: 18,
-          }}
-        >
-          Evidence Mapping
-        </h3>
-
-        <table
-          style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-          }}
-        >
-          <thead>
-            <tr>
-              <th style={tableHeader}>Evidence</th>
-              <th style={tableHeader}>Supports</th>
-              <th style={tableHeader}>Contradicts</th>
-              <th style={tableHeader}>Strength</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {[
-              [
-                'Bank Statement',
-                'Financial Claim',
-                'Witness Statement',
-                'High',
-              ],
-              [
-                'Call Records',
-                'Timeline',
-                'Affidavit',
-                'High',
-              ],
-              [
-                'WhatsApp Chats',
-                'Communication',
-                'Oral Statement',
-                'Medium',
-              ],
-              [
-                'Photos',
-                'Location',
-                'Witness Version',
-                'Strong',
-              ],
-            ].map((row) => (
-              <tr key={row[0]}>
-                {row.map((cell) => (
-                  <td
-                    key={cell}
-                    style={tableCell}
-                  >
-                    {cell}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-            {/* ================= COURTROOM STRATEGY ================= */}
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 24,
-          marginBottom: 30,
-        }}
-      >
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            padding: 22,
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-              marginBottom: 18,
-            }}
-          >
-            AI Courtroom Strategy
-          </h3>
-
-          <ul
-            style={{
-              margin: 0,
-              paddingLeft: 20,
-              lineHeight: 2,
-              color: '#334155',
-            }}
-          >
-            <li>Start with basic identity questions.</li>
-            <li>Allow the witness to repeat earlier statements.</li>
-            <li>Introduce documentary evidence gradually.</li>
-            <li>Challenge inconsistencies using objective records.</li>
-            <li>Avoid revealing all evidence too early.</li>
-            <li>Finish with credibility-based questions.</li>
-          </ul>
-        </div>
-
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            padding: 22,
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-              marginBottom: 18,
-            }}
-          >
-            Recommended Question Order
-          </h3>
-
-          {[
-            'Identity Verification',
-            'Relationship with Parties',
-            'Timeline',
-            'Financial Records',
-            'Electronic Evidence',
-            'Contradictions',
-            'Credibility',
-          ].map((item, index) => (
-            <div
-              key={item}
-              style={{
-                display: 'flex',
-                gap: 14,
-                alignItems: 'center',
-                padding: '12px 0',
-                borderBottom:
-                  index !== 6
-                    ? '1px solid #e2e8f0'
-                    : 'none',
-              }}
-            >
-              <div
-                style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: '50%',
-                  background: '#3b82f6',
-                  color: '#fff',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  fontWeight: 700,
-                }}
-              >
-                {index + 1}
-              </div>
-
-              <strong>{item}</strong>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ================= AI SUMMARY ================= */}
-
-      <div
-        style={{
-          background: 'rgba(59, 130, 246, 0.05)',
-          border: '1px solid rgba(59, 130, 246, 0.1)',
-          borderRadius: 16,
-          padding: 22,
-          marginBottom: 30,
-        }}
-      >
-        <h3
-          style={{
-            marginTop: 0,
-            color: '#1d4ed8',
-          }}
-        >
-          AI Summary
-        </h3>
-
-        <p
-          style={{
-            color: '#334155',
-            lineHeight: 1.8,
-          }}
-        >
-          AI analysis indicates that the witness has several inconsistencies
-          relating to the sequence of events, financial transactions and
-          communication records. Documentary evidence appears stronger than
-          the oral testimony. An evidence-first questioning strategy is
-          recommended before moving to credibility-based questions.
-        </p>
-      </div>
-
-      {/* ================= ACTIONS ================= */}
-
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          background: 'rgba(255,255,255,0.4)',
-          border: '1px solid rgba(0,0,0,0.05)',
-          borderRadius: 16,
-          padding: 22,
-          marginBottom: 30,
-        }}
-      >
+      {/* Structured result */}
+      {result && !loading && (
         <div>
-          <h3
-            style={{
-              margin: 0,
-            }}
-          >
-            Export & Continue
-          </h3>
+          {/* Witness cards */}
+          {result.witnesses?.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Witness Analysis</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                {result.witnesses.map((w: any, i: number) => (
+                  <div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 14 }}>{w.name ?? witnessName}</div>
+                        <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{w.role}</div>
+                      </div>
+                      {w.credibilityScore && (
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: 20, fontWeight: 800, color: w.credibilityScore >= 70 ? '#15803d' : '#d97706' }}>{w.credibilityScore}%</div>
+                          <div style={{ fontSize: 10, color: '#64748b' }}>Credibility</div>
+                        </div>
+                      )}
+                    </div>
+                    {w.keyTestimony && <p style={{ fontSize: 12, color: '#475569', margin: '0 0 8px', lineHeight: 1.5 }}>{w.keyTestimony}</p>}
+                    {w.preparation && (
+                      <div style={{ background: '#f0fdf4', borderRadius: 6, padding: '6px 10px', fontSize: 11, color: '#15803d', fontWeight: 500 }}>
+                        💡 {w.preparation}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-          <p
-            style={{
-              marginTop: 6,
-              color: '#64748b',
-            }}
-          >
-            Save this analysis or export it for court preparation.
-          </p>
+          {/* Questions list */}
+          {questions.length > 0 && (
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+                  Cross-Examination Questions
+                  <span style={{ marginLeft: 8, fontSize: 12, color: '#64748b', fontWeight: 400 }}>({questions.length} questions)</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {questions.map((q: string, i: number) => (
+                  <div key={i} style={{ display: 'flex', gap: 12, padding: '10px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', width: 24, flexShrink: 0, paddingTop: 1 }}>Q{i + 1}</span>
+                    <span style={{ flex: 1, fontSize: 13, color: '#334155', lineHeight: 1.6 }}>{q}</span>
+                    <button onClick={() => copyQ(i, q)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 4, flexShrink: 0 }}>
+                      <i className={`ti ${copiedIdx === i ? 'ti-check' : 'ti-copy'}`} style={{ color: copiedIdx === i ? '#22c55e' : '#94a3b8', fontSize: 14 }} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-
-        <div
-          style={{
-            display: 'flex',
-            gap: 12,
-            flexWrap: 'wrap',
-          }}
-        >
-          <button style={primaryButton}>
-            <i className="ti ti-file-export" />
-            Export PDF
-          </button>
-
-          <button style={primaryButton}>
-            <i className="ti ti-file-text" />
-            Export Word
-          </button>
-
-          <button style={primaryButton}>
-            <i className="ti ti-device-floppy" />
-            Save
-          </button>
-
-          <button style={primaryButton}>
-            <i className="ti ti-microphone" />
-            Mock Cross Exam
-          </button>
-        </div>
-      </div>
-
+      )}
     </div>
   )
 }
 
-/* ================= HELPERS ================= */
-
-function Field({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <label
-        style={{
-          display: 'block',
-          marginBottom: 8,
-          fontWeight: 600,
-          fontSize: 13,
-          color: '#334155',
-        }}
-      >
-        {label}
-      </label>
-
-      {children}
-    </div>
-  )
-}
-
-function ScoreItem({
-  title,
-  score,
-}: {
-  title: string
-  score: string
-}) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-      }}
-    >
-      <span>{title}</span>
-      <strong>{score}</strong>
-    </div>
-  )
-}
-
-function Insight({
-  title,
-  value,
-}: {
-  title: string
-  value: string
-}) {
-  return (
-    <div
-      style={{
-        borderBottom: '1px solid rgba(0,0,0,0.05)',
-        paddingBottom: 12,
-      }}
-    >
-      <div
-        style={{
-          color: '#64748b',
-          fontSize: 13,
-        }}
-      >
-        {title}
-      </div>
-
-      <strong>{value}</strong>
-    </div>
-  )
-}
-
-function RiskCard({
-  title,
-  value,
-  color,
-}: {
-  title: string
-  value: string
-  color: string
-}) {
-  return (
-    <div
-      style={{
-        background: 'rgba(255,255,255,0.6)',
-        borderRadius: 12,
-        padding: 18,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 13,
-          color: '#64748b',
-        }}
-      >
-        {title}
-      </div>
-
-      <div
-        style={{
-          marginTop: 10,
-          fontSize: 22,
-          fontWeight: 700,
-          color,
-        }}
-      >
-        {value}
-      </div>
-    </div>
-  )
-}
-
-/* ================= STYLES ================= */
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  height: 44,
-  border: '1px solid rgba(0,0,0,0.05)',
-  borderRadius: 10,
-  padding: '0 14px',
-  outline: 'none',
-  fontSize: 14,
-  fontFamily: 'inherit',
-  boxSizing: 'border-box',
-}
-
-const tableHeader: React.CSSProperties = {
-  textAlign: 'left',
-  padding: 14,
-  background: 'rgba(255,255,255,0.6)',
-  borderBottom: '1px solid rgba(0,0,0,0.05)',
-  color: '#475569',
-  fontWeight: 600,
-}
-
-const tableCell: React.CSSProperties = {
-  padding: 14,
-  borderBottom: '1px solid rgba(0,0,0,0.05)',
-}
-
-const primaryButton: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  border: 'none',
-  background: '#3b82f6',
-  color: '#fff',
-  borderRadius: 10,
-  padding: '10px 18px',
-  cursor: 'pointer',
-  fontWeight: 600,
-}
+const labelSt: React.CSSProperties = { display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 600, color: '#374151' }
+const inputSt: React.CSSProperties = { width: '100%', height: 40, border: '1px solid #e2e8f0', borderRadius: 8, padding: '0 12px', fontSize: 13, outline: 'none', background: '#f8fafc', color: '#0f172a', fontFamily: 'inherit', boxSizing: 'border-box' }

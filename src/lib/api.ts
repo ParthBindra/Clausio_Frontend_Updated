@@ -5,14 +5,79 @@ const BASE = process.env.NEXT_PUBLIC_API_URL
 // plain prose, so `result` is not guaranteed to be JSON — try to parse it as structured
 // data (optionally wrapped in a ```json fence) and fall back to null so callers can
 // display the raw text instead.
+// ============================================================
+// REPLACE the existing parseAiJson function in src/lib/api.ts
+// with this improved version
+// ============================================================
+
 export function parseAiJson<T = any>(raw: string | undefined | null): T | null {
   if (!raw) return null
-  const cleaned = raw.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '')
+
+  // Step 1 — Clean markdown code blocks
+  let cleaned = raw.trim()
+  cleaned = cleaned.replace(/^```json\s*/i, '')
+  cleaned = cleaned.replace(/^```\s*/i, '')
+  cleaned = cleaned.replace(/```\s*$/i, '')
+  cleaned = cleaned.trim()
+
+  // Step 2 — Try direct parse first
   try {
     return JSON.parse(cleaned) as T
   } catch {
-    return null
+    // continue to next strategies
   }
+
+  // Step 3 — Find JSON object in text (AI sometimes adds preamble)
+  // Look for { ... } pattern
+  const objMatch = cleaned.match(/\{[\s\S]*\}/)
+  if (objMatch) {
+    try {
+      return JSON.parse(objMatch[0]) as T
+    } catch {
+      // continue
+    }
+  }
+
+  // Step 4 — Find JSON array in text
+  // Look for [ ... ] pattern
+  const arrMatch = cleaned.match(/\[[\s\S]*\]/)
+  if (arrMatch) {
+    try {
+      return JSON.parse(arrMatch[0]) as T
+    } catch {
+      // continue
+    }
+  }
+
+  // Step 5 — Fix common AI JSON mistakes
+  // Fix trailing commas (common AI mistake)
+  try {
+    const fixed = cleaned
+      .replace(/,\s*}/g, '}')   // trailing comma before }
+      .replace(/,\s*\]/g, ']')  // trailing comma before ]
+    return JSON.parse(fixed) as T
+  } catch {
+    // continue
+  }
+
+  // Step 6 — Extract JSON from text with preamble
+  // Pattern: "Here is the analysis:\n{...}" or "Result:\n[...]"
+  const afterColon = cleaned.indexOf('\n{')
+  if (afterColon !== -1) {
+    try {
+      return JSON.parse(cleaned.substring(afterColon + 1)) as T
+    } catch { }
+  }
+
+  const afterColonArr = cleaned.indexOf('\n[')
+  if (afterColonArr !== -1) {
+    try {
+      return JSON.parse(cleaned.substring(afterColonArr + 1)) as T
+    } catch { }
+  }
+
+  // All strategies failed — return null
+  return null
 }
 
 function getToken(): string | null {
@@ -93,7 +158,7 @@ export const authApi = {
       document.cookie = 'clausio_token=; path=/; max-age=0'
     }
   },
-
+changePassword: (data: any) => send('PUT', '/auth/change-password', data, 'Failed to change password'),
   getUser: () => {
     if (typeof window === 'undefined') return null
     const user = localStorage.getItem('clausio_user')

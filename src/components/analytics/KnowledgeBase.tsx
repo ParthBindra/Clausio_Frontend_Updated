@@ -1,1145 +1,136 @@
 'use client'
 
-import React from 'react'
-
-const stats = [
+const FEATURES = [
   {
-    title: 'Documents',
-    value: '8,426',
-    icon: 'ti-files',
-    color: '#3b82f6',
+    icon: 'ti-file-upload',
+    title: 'Upload Firm Templates',
+    desc: 'Upload your standard petition templates, prayer clauses and drafts. AI will draft in your firm\'s exact style and format.',
+    color: '#2563eb', bg: '#eff6ff',
   },
-  {
-    title: 'Case Laws',
-    value: '2,184',
-    icon: 'ti-scale',
-    color: '#16a34a',
-  },
-  {
-    title: 'Bare Acts',
-    value: '356',
-    icon: 'ti-book',
-    color: '#f59e0b',
-  },
-  {
-    title: 'AI Indexed',
-    value: '99%',
-    icon: 'ti-brain',
-    color: '#7c3aed',
-  },
-]
-
-const categories = [
   {
     icon: 'ti-scale',
-    title: 'Family Law',
-    docs: '1,246 Documents',
-    color: '#3b82f6',
+    title: 'Store Important Judgments',
+    desc: 'Save judgment summaries with your own analysis. AI will cite these when relevant — even new 2024/2025 judgments not in AI training data.',
+    color: '#15803d', bg: '#f0fdf4',
   },
   {
-    icon: 'ti-building-bank',
-    title: 'Civil Law',
-    docs: '982 Documents',
-    color: '#16a34a',
+    icon: 'ti-notes',
+    title: 'Legal Notes & Observations',
+    desc: 'Store your senior advocate\'s observations, local court practices and procedural notes. AI applies these to every case automatically.',
+    color: '#7c3aed', bg: '#f5f3ff',
   },
   {
-    icon: 'ti-gavel',
-    title: 'Criminal Law',
-    docs: '764 Documents',
-    color: '#dc2626',
+    icon: 'ti-search',
+    title: 'Semantic Search Across All Cases',
+    desc: 'Search across all your stored knowledge using natural language. "Show me all cases where maintenance was above Rs 50,000."',
+    color: '#d97706', bg: '#fffbeb',
   },
   {
-    icon: 'ti-file-certificate',
-    title: 'Corporate Law',
-    docs: '521 Documents',
-    color: '#7c3aed',
+    icon: 'ti-users',
+    title: 'Team Knowledge Sharing',
+    desc: 'Junior advocates can access the firm\'s knowledge base. Senior notes and templates shared across the entire team instantly.',
+    color: '#0891b2', bg: '#f0f9ff',
   },
   {
-    icon: 'ti-home',
-    title: 'Property Law',
-    docs: '438 Documents',
-    color: '#ea580c',
-  },
-  {
-    icon: 'ti-heart-handshake',
-    title: 'Labour Law',
-    docs: '392 Documents',
-    color: '#0891b2',
+    icon: 'ti-lock',
+    title: 'Completely Private',
+    desc: 'Your firm\'s knowledge is private and encrypted. Never shared with other Clausio users or used to train AI models.',
+    color: '#475569', bg: '#f8fafc',
   },
 ]
 
 export default function KnowledgeBase() {
   return (
     <div>
+      {/* Header */}
+      <div style={{ marginBottom: 28 }}>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Knowledge Base</h2>
+        <p style={{ marginTop: 4, color: '#64748b', fontSize: 13 }}>Your firm's private AI knowledge library.</p>
+      </div>
 
-      {/* ================= HEADER ================= */}
+      {/* Coming soon banner */}
+      <div style={{ background: 'linear-gradient(135deg, #1e3a8a, #2563eb)', borderRadius: 20, padding: '32px 36px', marginBottom: 32, color: '#fff', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: -40, right: -40, width: 180, height: 180, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+        <div style={{ position: 'absolute', bottom: -30, right: 60, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
 
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 24,
-        }}
-      >
-        <div>
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 18,
-              fontWeight: 700,
-              letterSpacing: '-0.3px', color: '#0f172a',
-            }}
-          >
-            AI Knowledge Base
-          </h2>
-
-          <p
-            style={{
-              marginTop: 8,
-              color: '#64748b',
-              lineHeight: 1.7,
-            }}
-          >
-            Search judgments, bare acts, legal templates, research papers
-            and your firm's documents using AI.
-          </p>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 20, padding: '4px 12px', marginBottom: 16 }}>
+          <i className="ti ti-clock" style={{ fontSize: 12 }} />
+          <span style={{ fontSize: 11, fontWeight: 700 }}>COMING SOON — Expected Month 2</span>
         </div>
 
-        <button
-          style={{
-            border: 'none',
-            background: '#3b82f6',
-            color: '#fff',
-            borderRadius: 10,
-            padding: '12px 20px',
-            cursor: 'pointer',
-            fontWeight: 600,
-          }}
-        >
-          <i
-            className="ti ti-upload"
-            style={{ marginRight: 8 }}
-          />
-          Upload Document
-        </button>
-      </div>
-
-      {/* ================= SEARCH ================= */}
-
-      <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-          border: '1px solid rgba(0,0,0,0.05)',
-          borderRadius: 16,
-          padding: 24,
-          marginBottom: 28,
-        }}
-      >
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '2fr 1fr 1fr auto',
-            gap: 16,
-          }}
-        >
-          <input
-            placeholder="Search judgments, sections, acts, templates..."
-            style={inputStyle}
-          />
-
-          <select style={inputStyle}>
-            <option>All Categories</option>
-            <option>Case Laws</option>
-            <option>Bare Acts</option>
-            <option>Templates</option>
-            <option>My Documents</option>
-          </select>
-
-          <select style={inputStyle}>
-            <option>All Courts</option>
-            <option>Supreme Court</option>
-            <option>High Court</option>
-            <option>Family Court</option>
-            <option>District Court</option>
-          </select>
-
-          <button
-            style={{
-              border: 'none',
-              background: '#3b82f6',
-              color: '#fff',
-              borderRadius: 10,
-              padding: '0 24px',
-              cursor: 'pointer',
-              fontWeight: 600,
-            }}
-          >
-            Search
-          </button>
-        </div>
-      </div>
-
-      {/* ================= STATS ================= */}
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4,1fr)',
-          gap: 18,
-          marginBottom: 30,
-        }}
-      >
-        {stats.map((item) => (
-          <div
-            key={item.title}
-            style={{
-              background: 'rgba(255,255,255,0.4)',
-              border: '1px solid rgba(0,0,0,0.05)',
-              borderRadius: 16,
-              padding: 20,
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-              }}
-            >
-              <span
-                style={{
-                  color: '#64748b',
-                  fontSize: 13,
-                }}
-              >
-                {item.title}
-              </span>
-
-              <i
-                className={`ti ${item.icon}`}
-                style={{
-                  color: item.color,
-                  fontSize: 22,
-                }}
-              />
-            </div>
-
-            <div
-              style={{
-                marginTop: 18,
-                fontSize: 30,
-                fontWeight: 700,
-                color: '#0f172a',
-              }}
-            >
-              {item.value}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* ================= CATEGORIES ================= */}
-
-      <div
-        style={{
-          marginBottom: 30,
-        }}
-      >
-        <h3
-          style={{
-            marginBottom: 20,
-          }}
-        >
-          Legal Categories
+        <h3 style={{ margin: '0 0 10px', fontSize: 26, fontWeight: 800, letterSpacing: '-0.5px' }}>
+          Your Firm's Private Legal Brain
         </h3>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3,1fr)',
-            gap: 18,
-          }}
-        >
-          {categories.map((category) => (
-            <CategoryCard
-              key={category.title}
-              {...category}
-            />
-          ))}
-        </div>
-      </div>
-            {/* ================= LEGAL LIBRARY ================= */}
-
-      <div
-        style={{
-          marginBottom: 30,
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 18,
-          }}
-        >
-          <h3
-            style={{
-              margin: 0,
-            }}
-          >
-            Legal Library
-          </h3>
-
-          <button
-            style={{
-              border: 'none',
-              background: '#3b82f6',
-              color: '#fff',
-              borderRadius: 10,
-              padding: '10px 18px',
-              cursor: 'pointer',
-              fontWeight: 600,
-            }}
-          >
-            View Library
-          </button>
-        </div>
-
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            overflow: 'hidden',
-          }}
-        >
-          {[
-            {
-              title: 'Family Court Judgments 2025',
-              category: 'Judgment',
-              size: '12.4 MB',
-            },
-            {
-              title: 'Supreme Court Landmark Cases',
-              category: 'Case Law',
-              size: '18.7 MB',
-            },
-            {
-              title: 'Maintenance Calculation Guide',
-              category: 'Reference',
-              size: '2.6 MB',
-            },
-            {
-              title: 'Divorce Petition Draft',
-              category: 'Template',
-              size: '850 KB',
-            },
-          ].map((doc) => (
-            <LibraryRow
-              key={doc.title}
-              {...doc}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* ================= BARE ACTS ================= */}
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 24,
-          marginBottom: 30,
-        }}
-      >
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            padding: 22,
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-              marginBottom: 18,
-            }}
-          >
-            Frequently Used Bare Acts
-          </h3>
-
-          {[
-            'Hindu Marriage Act',
-            'Domestic Violence Act',
-            'Family Courts Act',
-            'Indian Evidence Act',
-            'CrPC Section 125',
-            'Bharatiya Nyaya Sanhita',
-          ].map((item) => (
-            <div
-              key={item}
-              style={{
-                padding: '12px 0',
-                borderBottom: '1px solid rgba(0,0,0,0.05)',
-              }}
-            >
-              {item}
-            </div>
-          ))}
-        </div>
-
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            padding: 22,
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-              marginBottom: 18,
-            }}
-          >
-            Popular Case Laws
-          </h3>
-
-          {[
-            'Rajnesh v. Neha',
-            'Shamima Farooqui v. Shahid Khan',
-            'Danial Latifi v. Union of India',
-            'Vimlaben Ajitbhai Patel Case',
-            'Kalyan Dey Chowdhury Case',
-          ].map((item) => (
-            <div
-              key={item}
-              style={{
-                padding: '12px 0',
-                borderBottom: '1px solid rgba(0,0,0,0.05)',
-              }}
-            >
-              {item}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ================= BOOKMARKS ================= */}
-
-      <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-          border: '1px solid rgba(0,0,0,0.05)',
-          borderRadius: 16,
-          padding: 22,
-          marginBottom: 30,
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 18,
-          }}
-        >
-          <h3
-            style={{
-              margin: 0,
-            }}
-          >
-            Bookmarked Resources
-          </h3>
-
-          <button
-            style={{
-              border: '1px solid rgba(0,0,0,0.05)',
-              background: 'rgba(255,255,255,0.4)',
-              borderRadius: 10,
-              padding: '8px 16px',
-              cursor: 'pointer',
-            }}
-          >
-            Manage
-          </button>
-        </div>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3,1fr)',
-            gap: 18,
-          }}
-        >
-          <BookmarkCard
-            title="Maintenance Formula"
-            type="Guide"
-          />
-
-          <BookmarkCard
-            title="Family Court Rules"
-            type="Bare Act"
-          />
-
-          <BookmarkCard
-            title="Custody Judgment"
-            type="Case Law"
-          />
-        </div>
-      </div>
-            {/* ================= MY DOCUMENTS ================= */}
-
-      <div
-        style={{
-          marginBottom: 30,
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 18,
-          }}
-        >
-          <h3
-            style={{
-              margin: 0,
-            }}
-          >
-            My Documents
-          </h3>
-
-          <button
-            style={{
-              border: 'none',
-              background: '#3b82f6',
-              color: '#fff',
-              borderRadius: 10,
-              padding: '10px 18px',
-              cursor: 'pointer',
-              fontWeight: 600,
-            }}
-          >
-            View All
-          </button>
-        </div>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3,1fr)',
-            gap: 18,
-          }}
-        >
-          <RecentDocumentCard
-            title="Maintenance Petition Draft"
-            category="Draft"
-            updated="2 Hours Ago"
-          />
-
-          <RecentDocumentCard
-            title="Income Affidavit"
-            category="Evidence"
-            updated="Yesterday"
-          />
-
-          <RecentDocumentCard
-            title="Client WhatsApp Export"
-            category="Communication"
-            updated="3 Days Ago"
-          />
-        </div>
-      </div>
-
-      {/* ================= RECENT UPLOADS ================= */}
-
-      <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-          border: '1px solid rgba(0,0,0,0.05)',
-          borderRadius: 16,
-          padding: 22,
-          marginBottom: 30,
-        }}
-      >
-        <h3
-          style={{
-            marginTop: 0,
-            marginBottom: 20,
-          }}
-        >
-          Recent Uploads
-        </h3>
-
-        <table
-          style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-          }}
-        >
-          <thead>
-            <tr>
-              <th style={tableHeader}>Document</th>
-              <th style={tableHeader}>Category</th>
-              <th style={tableHeader}>Uploaded By</th>
-              <th style={tableHeader}>Date</th>
-              <th style={tableHeader}>Status</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {[
-              [
-                'Affidavit.pdf',
-                'Evidence',
-                'Parth',
-                'Today',
-                'Indexed',
-              ],
-              [
-                'Maintenance.xlsx',
-                'Finance',
-                'Parth',
-                'Yesterday',
-                'Indexed',
-              ],
-              [
-                'Chats.zip',
-                'Communication',
-                'Parth',
-                '2 Days Ago',
-                'Processing',
-              ],
-              [
-                'Judgment.pdf',
-                'Case Law',
-                'Parth',
-                '4 Days Ago',
-                'Indexed',
-              ],
-            ].map((row) => (
-              <tr key={row[0]}>
-                {row.map((cell) => (
-                  <td
-                    key={cell}
-                    style={tableCell}
-                  >
-                    {cell}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* ================= AI INSIGHTS ================= */}
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 24,
-          marginBottom: 30,
-        }}
-      >
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            padding: 22,
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-              marginBottom: 18,
-            }}
-          >
-            AI Insights
-          </h3>
-
-          <AIInsightCard
-            title="Most Referenced Law"
-            value="Hindu Marriage Act"
-          />
-
-          <AIInsightCard
-            title="Most Used Template"
-            value="Interim Maintenance"
-          />
-
-          <AIInsightCard
-            title="Frequently Accessed Case"
-            value="Rajnesh v. Neha"
-          />
-
-          <AIInsightCard
-            title="Suggested Reading"
-            value="Latest Bombay HC Judgment"
-          />
-        </div>
-
-        {/* ================= UPLOAD ================= */}
-
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            padding: 22,
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-              marginBottom: 18,
-            }}
-          >
-            Upload Knowledge
-          </h3>
-
-          <UploadCard />
-
-          <div
-            style={{
-              marginTop: 20,
-              display: 'grid',
-              gap: 12,
-            }}
-          >
-            <button style={secondaryButton}>
-              Upload PDF
-            </button>
-
-            <button style={secondaryButton}>
-              Upload Judgment
-            </button>
-
-            <button style={secondaryButton}>
-              Upload Bare Act
-            </button>
-
-            <button style={secondaryButton}>
-              Upload Draft Template
-            </button>
-          </div>
-        </div>
-      </div>
-            {/* ================= EXPORT & SHARE ================= */}
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 24,
-          marginBottom: 30,
-        }}
-      >
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            padding: 22,
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-              marginBottom: 18,
-            }}
-          >
-            Export Knowledge Base
-          </h3>
-
-          <p
-            style={{
-              color: '#64748b',
-              lineHeight: 1.7,
-            }}
-          >
-            Export documents, AI insights and legal research into
-            professionally formatted reports.
-          </p>
-
-          <div
-            style={{
-              display: 'grid',
-              gap: 12,
-              marginTop: 20,
-            }}
-          >
-            <button style={primaryButton}>
-              Export PDF
-            </button>
-
-            <button style={primaryButton}>
-              Export Word
-            </button>
-
-            <button style={primaryButton}>
-              Export Excel
-            </button>
-          </div>
-        </div>
-
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            padding: 22,
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-              marginBottom: 18,
-            }}
-          >
-            Share Knowledge
-          </h3>
-
-          <p
-            style={{
-              color: '#64748b',
-              lineHeight: 1.7,
-            }}
-          >
-            Share folders, research and templates securely with
-            your team.
-          </p>
-
-          <div
-            style={{
-              display: 'grid',
-              gap: 12,
-              marginTop: 20,
-            }}
-          >
-            <button style={primaryButton}>
-              Share Folder
-            </button>
-
-            <button style={primaryButton}>
-              Generate Link
-            </button>
-
-            <button style={primaryButton}>
-              Manage Access
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ================= AI SUMMARY ================= */}
-
-      <div
-        style={{
-          background: 'rgba(59, 130, 246, 0.05)',
-          border: '1px solid rgba(59, 130, 246, 0.1)',
-          borderRadius: 16,
-          padding: 22,
-          marginBottom: 30,
-        }}
-      >
-        <h3
-          style={{
-            marginTop: 0,
-            color: '#1d4ed8',
-          }}
-        >
-          AI Knowledge Summary
-        </h3>
-
-        <p
-          style={{
-            marginBottom: 0,
-            lineHeight: 1.8,
-            color: '#334155',
-          }}
-        >
-          Your knowledge base currently contains more than 8,000
-          indexed legal resources. AI recommends reviewing recent
-          Supreme Court judgments on maintenance, custody and
-          domestic violence, as these align closely with your
-          current active matters.
+        <p style={{ margin: '0 0 20px', fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 1.7, maxWidth: 520 }}>
+          Once built, your firm uploads templates, judgments and notes. 
+          AI learns your firm's style and cites your own stored knowledge — 
+          making every output 10x more relevant and accurate.
         </p>
+
+        <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 600 }}>
+            <i className="ti ti-calendar" style={{ marginRight: 6 }} />
+            1 Week to Build
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 600 }}>
+            <i className="ti ti-currency-rupee" style={{ marginRight: 6 }} />
+            Zero Extra Cost
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 600 }}>
+            <i className="ti ti-database" style={{ marginRight: 6 }} />
+            pgvector Powered
+          </div>
+        </div>
       </div>
 
-    </div>
-  )
-}
-
-/* ================= HELPER COMPONENTS ================= */
-
-function CategoryCard({
-  icon,
-  title,
-  docs,
-  color,
-}: {
-  icon: string
-  title: string
-  docs: string
-  color: string
-}) {
-  return (
-    <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-        border: '1px solid rgba(0,0,0,0.05)',
-        borderRadius: 16,
-        padding: 22,
-      }}
-    >
-      <i
-        className={`ti ${icon}`}
-        style={{
-          fontSize: 30,
-          color,
-        }}
-      />
-
-      <h3
-        style={{
-          marginTop: 16,
-          marginBottom: 8,
-        }}
-      >
-        {title}
-      </h3>
-
-      <div style={{ color: '#64748b' }}>
-        {docs}
+      {/* Features grid */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 16 }}>What Knowledge Base Will Do</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
+          {FEATURES.map((f, i) => (
+            <div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 18 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: f.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <i className={`ti ${f.icon}`} style={{ fontSize: 18, color: f.color }} />
+                </div>
+                <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 13 }}>{f.title}</div>
+              </div>
+              <p style={{ margin: 0, fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>{f.desc}</p>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
-  )
-}
 
-function LibraryRow({
-  title,
-  category,
-  size,
-}: {
-  title: string
-  category: string
-  size: string
-}) {
-  return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '2fr 1fr .8fr auto',
-        padding: 18,
-        borderBottom: '1px solid rgba(0,0,0,0.05)',
-        alignItems: 'center',
-      }}
-    >
-      <strong>{title}</strong>
-      <span>{category}</span>
-      <span>{size}</span>
+      {/* How it works */}
+      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 16 }}>How It Will Work</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {[
+            { step: '01', title: 'Upload your documents', desc: 'Upload petition templates, judgment PDFs, legal notes — any format.', icon: 'ti-upload' },
+            { step: '02', title: 'AI processes and indexes', desc: 'AI reads, summarizes and stores in your private vector database.', icon: 'ti-brain' },
+            { step: '03', title: 'AI uses your knowledge automatically', desc: 'Every time you use any AI feature, it checks your knowledge base first.', icon: 'ti-sparkles' },
+            { step: '04', title: 'Search and reference anytime', desc: 'Search your own knowledge base using natural language at any time.', icon: 'ti-search' },
+          ].map((s, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: '#1e3a8a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
+                {s.step}
+              </div>
+              <div>
+                <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{s.title}</div>
+                <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{s.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
-      <button
-        style={{
-          border: 'none',
-          background: 'rgba(59, 130, 246, 0.05)',
-          color: '#3b82f6',
-          padding: '6px 12px',
-          borderRadius: 8,
-          cursor: 'pointer',
-        }}
-      >
-        Open
-      </button>
-    </div>
-  )
-}
-
-function BookmarkCard({
-  title,
-  type,
-}: {
-  title: string
-  type: string
-}) {
-  return (
-    <div
-      style={{
-        background: 'rgba(255,255,255,0.6)',
-        borderRadius: 14,
-        padding: 20,
-      }}
-    >
-      <h4 style={{ marginTop: 0 }}>
-        {title}
-      </h4>
-
-      <div style={{ color: '#64748b' }}>
-        {type}
+      {/* Notify */}
+      <div style={{ marginTop: 20, padding: '14px 18px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12, fontSize: 13 }}>
+        <i className="ti ti-info-circle" style={{ color: '#2563eb', fontSize: 18, flexShrink: 0 }} />
+        <span style={{ color: '#1e40af' }}>
+          Knowledge Base is being built. Contact <strong>support@clausio.io</strong> to request early access.
+        </span>
       </div>
     </div>
   )
-}
-
-function RecentDocumentCard({
-  title,
-  category,
-  updated,
-}: {
-  title: string
-  category: string
-  updated: string
-}) {
-  return (
-    <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-        border: '1px solid rgba(0,0,0,0.05)',
-        borderRadius: 14,
-        padding: 20,
-      }}
-    >
-      <h4 style={{ marginTop: 0 }}>
-        {title}
-      </h4>
-
-      <div style={{ color: '#64748b' }}>
-        {category}
-      </div>
-
-      <div
-        style={{
-          marginTop: 12,
-          fontSize: 13,
-          color: '#94a3b8',
-        }}
-      >
-        {updated}
-      </div>
-    </div>
-  )
-}
-
-function AIInsightCard({
-  title,
-  value,
-}: {
-  title: string
-  value: string
-}) {
-  return (
-    <div
-      style={{
-        padding: '12px 0',
-        borderBottom: '1px solid rgba(0,0,0,0.05)',
-      }}
-    >
-      <div
-        style={{
-          color: '#64748b',
-          fontSize: 13,
-        }}
-      >
-        {title}
-      </div>
-
-      <strong>{value}</strong>
-    </div>
-  )
-}
-
-function UploadCard() {
-  return (
-    <div
-      style={{
-        border: '2px dashed #cbd5e1',
-        borderRadius: 12,
-        padding: 36,
-        textAlign: 'center',
-        background: 'rgba(255,255,255,0.6)',
-      }}
-    >
-      <i
-        className="ti ti-cloud-upload"
-        style={{
-          fontSize: 42,
-          color: '#3b82f6',
-        }}
-      />
-
-      <div
-        style={{
-          marginTop: 12,
-          fontWeight: 600,
-        }}
-      >
-        Drag & Drop Documents
-      </div>
-    </div>
-  )
-}
-
-/* ================= STYLES ================= */
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  height: 44,
-  border: '1px solid rgba(0,0,0,0.05)',
-  borderRadius: 10,
-  padding: '0 14px',
-  outline: 'none',
-  fontSize: 14,
-  boxSizing: 'border-box',
-}
-
-const tableHeader: React.CSSProperties = {
-  textAlign: 'left',
-  padding: 14,
-  background: 'rgba(255,255,255,0.6)',
-  borderBottom: '1px solid rgba(0,0,0,0.05)',
-  color: '#475569',
-}
-
-const tableCell: React.CSSProperties = {
-  padding: 14,
-  borderBottom: '1px solid rgba(0,0,0,0.05)',
-}
-
-const primaryButton: React.CSSProperties = {
-  border: 'none',
-  background: '#3b82f6',
-  color: '#fff',
-  borderRadius: 10,
-  padding: '10px 18px',
-  cursor: 'pointer',
-  fontWeight: 600,
-}
-
-const secondaryButton: React.CSSProperties = {
-  border: '1px solid rgba(0,0,0,0.05)',
-  background: 'rgba(255,255,255,0.4)',
-  borderRadius: 10,
-  padding: '10px 18px',
-  cursor: 'pointer',
-  fontWeight: 600,
 }

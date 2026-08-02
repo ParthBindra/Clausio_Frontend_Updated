@@ -260,6 +260,19 @@ export default function Sidebar() {
             </span>
           )}
         </Link>
+        <button
+          onClick={() => {
+            document.cookie = 'clausio_token=; path=/; max-age=0'
+            localStorage.removeItem('clausio_token')
+            localStorage.removeItem('clausio_user')
+            localStorage.removeItem('clausio-auth')
+            window.location.href = '/auth/login'
+          }}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: expanded ? 'flex-start' : 'center', gap: expanded ? 12 : 0, padding: expanded ? '0 12px' : 0, height: 40, borderRadius: 16, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', width: '100%', marginTop: 4, fontFamily: 'inherit' }}
+        >
+          <i className="ti ti-logout" style={{ fontSize: 20, flexShrink: 0 }} />
+          {expanded && <span style={{ fontSize: 14, fontWeight: 500 }}>Logout</span>}
+        </button>
       </div>
     </aside>
   )

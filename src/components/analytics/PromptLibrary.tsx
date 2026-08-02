@@ -1,1229 +1,210 @@
 'use client'
 
-import React from 'react'
+import { useState } from 'react'
+import { useCaseStore } from '@/lib/store'
+import { aiApi } from '@/lib/api'
 
-const stats = [
+const PROMPTS = [
   {
-    title: 'Total Prompts',
-    value: '486',
-    icon: 'ti-message-chatbot',
-    color: '#3b82f6',
+    category: 'Case Analysis',
+    color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe',
+    items: [
+      { id: 'summary',        icon: 'ti-file-text',    title: 'Full Case Summary',         desc: 'Complete brief for Senior Counsel including parties, strengths, weaknesses and strategy.' },
+      { id: 'contradictions', icon: 'ti-alert-triangle', title: 'Find Contradictions',      desc: 'Forensic analysis of inconsistencies between claims, statements and documents.' },
+      { id: 'chronology',     icon: 'ti-timeline',     title: 'Build Timeline',             desc: 'Court-ready chronological timeline with dates, events and legal significance.' },
+    ]
   },
   {
-    title: 'My Prompts',
-    value: '64',
-    icon: 'ti-folder',
-    color: '#16a34a',
+    category: 'Legal Research',
+    color: '#15803d', bg: '#f0fdf4', border: '#86efac',
+    items: [
+      { id: 'research',  icon: 'ti-scale',     title: 'Find Binding Judgments',  desc: 'Supreme Court and High Court judgments with ratio decidendi and how to use them.' },
+      { id: 'financial', icon: 'ti-currency-rupee', title: 'Financial Analysis', desc: 'Maintenance calculation using Rajnesh v. Neha standard with settlement range.' },
+    ]
   },
   {
-    title: 'Shared',
-    value: '92',
-    icon: 'ti-users',
-    color: '#f59e0b',
+    category: 'Hearing Preparation',
+    color: '#7c3aed', bg: '#f5f3ff', border: '#c4b5fd',
+    items: [
+      { id: 'prep',      icon: 'ti-gavel',        title: 'Hearing Prep Brief',    desc: 'Complete day-of hearing brief with opening submission, arguments and documents.' },
+      { id: 'readiness', icon: 'ti-shield-check', title: 'Readiness Check',       desc: 'Audit of case readiness with score, gaps and what to fix before the hearing.' },
+      { id: 'witness',   icon: 'ti-users',        title: 'Witness Intelligence',  desc: 'Credibility scores, preparation tips and cross-examination questions per witness.' },
+    ]
   },
   {
-    title: 'AI Success',
-    value: '97%',
-    icon: 'ti-brain',
-    color: '#7c3aed',
+    category: 'Action & Planning',
+    color: '#d97706', bg: '#fffbeb', border: '#fde68a',
+    items: [
+      { id: 'actionplan', icon: 'ti-list-check', title: '30-Day Action Plan',  desc: 'Prioritised task list with deadlines, assignments and legal basis for each action.' },
+    ]
   },
 ]
 
-const categories = [
-  {
-    title: 'Drafting',
-    subtitle: 'Petitions & Applications',
-    icon: 'ti-file-pencil',
-    color: '#3b82f6',
-  },
-  {
-    title: 'Legal Research',
-    subtitle: 'Judgments & Acts',
-    icon: 'ti-scale',
-    color: '#16a34a',
-  },
-  {
-    title: 'Cross Examination',
-    subtitle: 'Question Generator',
-    icon: 'ti-gavel',
-    color: '#dc2626',
-  },
-  {
-    title: 'Strategy',
-    subtitle: 'Case Planning',
-    icon: 'ti-target-arrow',
-    color: '#7c3aed',
-  },
-  {
-    title: 'Judge Insights',
-    subtitle: 'Judge Behaviour',
-    icon: 'ti-user-star',
-    color: '#ea580c',
-  },
-  {
-    title: 'Evidence Analysis',
-    subtitle: 'Evidence AI',
-    icon: 'ti-file-search',
-    color: '#0891b2',
-  },
-]
+interface Result {
+  promptId: string
+  output: string
+  time: string
+}
 
 export default function PromptLibrary() {
+  const { selectedCaseId } = useCaseStore()
+  const [loading,   setLoading]   = useState<string | null>(null)
+  const [result,    setResult]    = useState<Result | null>(null)
+  const [error,     setError]     = useState('')
+  const [search,    setSearch]    = useState('')
+  const [copied,    setCopied]    = useState(false)
+
+  async function runPrompt(promptId: string) {
+    if (!selectedCaseId) { setError('Please select a case from the dashboard first.'); return }
+    setLoading(promptId)
+    setError('')
+    setResult(null)
+    try {
+      let res: any
+      switch (promptId) {
+        case 'summary':        res = await aiApi.getSummary(selectedCaseId);        break
+        case 'contradictions': res = await aiApi.getContradictions(selectedCaseId); break
+        case 'chronology':     res = await aiApi.getChronology(selectedCaseId);     break
+        case 'research':       res = await aiApi.getLegalResearch(selectedCaseId);  break
+        case 'financial':      res = await aiApi.getFinancial(selectedCaseId);      break
+        case 'prep':           res = await aiApi.getPrep(selectedCaseId);           break
+        case 'readiness':      res = await aiApi.getReadiness(selectedCaseId);      break
+        case 'witness':        res = await aiApi.getWitness(selectedCaseId);        break
+        case 'actionplan':     res = await aiApi.getActionPlan(selectedCaseId);     break
+        default: return
+      }
+      const raw = res.summary ?? res.contradictions ?? res.chronology ?? res.judgments ??
+                  res.analysis ?? res.brief ?? res.readiness ?? res.intelligence ??
+                  res.actionPlan ?? res.result ?? ''
+      let output = raw
+      try {
+        const parsed = JSON.parse(raw)
+        output = JSON.stringify(parsed, null, 2)
+      } catch { }
+      setResult({ promptId, output, time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) })
+      // Save to history
+      const stored = JSON.parse(localStorage.getItem('clausio_ai_history') || '[]')
+      stored.unshift({ query: `Prompt: ${promptId}`, response: output, time: new Date().toISOString(), caseId: selectedCaseId })
+      localStorage.setItem('clausio_ai_history', JSON.stringify(stored.slice(0, 100)))
+    } catch (err: any) {
+      setError(err.message || 'Failed to run prompt. Please try again.')
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  function copyResult() {
+    if (!result) return
+    navigator.clipboard.writeText(result.output)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const allItems = PROMPTS.flatMap(cat => cat.items.map(item => ({ ...item, category: cat.category, color: cat.color, bg: cat.bg, border: cat.border })))
+  const filtered = search ? allItems.filter(i => i.title.toLowerCase().includes(search.toLowerCase()) || i.desc.toLowerCase().includes(search.toLowerCase())) : null
+
   return (
     <div>
+      {/* Header */}
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Prompt Library</h2>
+        <p style={{ marginTop: 4, color: '#64748b', fontSize: 13 }}>Ready-made AI prompts — click any prompt to run instantly on your selected case.</p>
+      </div>
 
-      {/* ================= HEADER ================= */}
+      {/* Search */}
+      <div style={{ position: 'relative', marginBottom: 20 }}>
+        <i className="ti ti-search" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: 16 }} />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search prompts..."
+          style={{ width: '100%', height: 40, border: '1px solid #e2e8f0', borderRadius: 10, paddingLeft: 38, paddingRight: 14, fontSize: 13, outline: 'none', background: '#fff', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+      </div>
 
-      <div
-        style={{
-          display:'flex',
-          justifyContent:'space-between',
-          alignItems:'center',
-          marginBottom:24,
-        }}
-      >
-        <div>
-          <h2
-            style={{
-              margin:0,
-              fontSize:28,
-              fontWeight:700,
-              letterSpacing: '-0.3px', color:'#0f172a',
-            }}
-          >
-            AI Prompt Library
-          </h2>
-
-          <p
-            style={{
-              marginTop:8,
-              color:'#64748b',
-              lineHeight:1.7,
-            }}
-          >
-            Create, organize and reuse powerful AI prompts for drafting,
-            research, litigation and courtroom preparation.
-          </p>
+      {!selectedCaseId && (
+        <div style={{ padding: '12px 16px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, fontSize: 13, color: '#92400e', marginBottom: 20 }}>
+          <i className="ti ti-info-circle" style={{ marginRight: 6 }} />
+          Select a case from the dashboard to run these prompts on your actual case data.
         </div>
+      )}
 
-        <button
-          style={{
-            border:'none',
-            background: '#3b82f6',
-            color:'#fff',
-            borderRadius:10,
-            padding:'12px 20px',
-            cursor:'pointer',
-            fontWeight:600,
-          }}
-        >
-          <i
-            className="ti ti-plus"
-            style={{marginRight:8}}
-          />
-          New Prompt
+      {error && (
+        <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, fontSize: 13, color: '#dc2626', marginBottom: 20 }}>
+          {error}
+        </div>
+      )}
+
+      {/* Search results */}
+      {filtered && (
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>{filtered.length} prompts found</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+            {filtered.map(item => (
+              <PromptCard key={item.id} item={item} loading={loading} onRun={runPrompt} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Category groups */}
+      {!filtered && PROMPTS.map(cat => (
+        <div key={cat.category} style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+            {cat.category}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+            {cat.items.map(item => (
+              <PromptCard key={item.id} item={{ ...item, color: cat.color, bg: cat.bg, border: cat.border, category: cat.category }} loading={loading} onRun={runPrompt} />
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {/* Result panel */}
+      {(loading || result) && (
+        <div style={{ marginTop: 8, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, overflow: 'hidden' }}>
+          <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <i className="ti ti-sparkles" style={{ color: '#7c3aed' }} />
+              {loading ? 'Generating...' : `Result · ${result?.time}`}
+            </div>
+            {result && (
+              <button onClick={copyResult} style={{ height: 32, padding: '0 12px', background: copied ? '#f0fdf4' : '#f8fafc', border: `1px solid ${copied ? '#86efac' : '#e2e8f0'}`, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: copied ? '#15803d' : '#475569', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <i className={`ti ${copied ? 'ti-check' : 'ti-copy'}`} /> {copied ? 'Copied!' : 'Copy'}
+              </button>
+            )}
+          </div>
+          <div style={{ padding: 20, maxHeight: 400, overflowY: 'auto' }}>
+            {loading && (
+              <div style={{ textAlign: 'center', padding: 30, color: '#7c3aed', fontSize: 13 }}>
+                <i className="ti ti-loader-2" style={{ fontSize: 28, display: 'block', marginBottom: 8, animation: 'spin 1s linear infinite' }} />
+                AI is generating... This may take 15-20 seconds.
+              </div>
+            )}
+            {result && (
+              <pre style={{ fontSize: 12, color: '#334155', lineHeight: 1.8, whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
+                {result.output}
+              </pre>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PromptCard({ item, loading, onRun }: { item: any; loading: string | null; onRun: (id: string) => void }) {
+  const isLoading = loading === item.id
+  return (
+    <div style={{ background: isLoading ? item.bg : '#fff', border: `1px solid ${isLoading ? item.border : '#e2e8f0'}`, borderRadius: 12, padding: 16, transition: 'all 0.15s' }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = item.border; e.currentTarget.style.background = item.bg }}
+      onMouseLeave={e => { if (!isLoading) { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = '#fff' } }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+        <i className={`ti ${item.icon}`} style={{ fontSize: 20, color: item.color }} />
+        <button onClick={() => onRun(item.id)} disabled={!!loading}
+          style={{ height: 28, padding: '0 10px', background: isLoading ? item.bg : item.color, color: isLoading ? item.color : '#fff', border: `1px solid ${item.color}`, borderRadius: 6, cursor: loading ? 'not-allowed' : 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4, opacity: loading && !isLoading ? 0.5 : 1 }}>
+          {isLoading ? <><i className="ti ti-loader-2" style={{ animation: 'spin 1s linear infinite' }} /> Running</> : <><i className="ti ti-play" /> Run</>}
         </button>
       </div>
-
-      {/* ================= SEARCH ================= */}
-
-      <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-          border: '1px solid rgba(0,0,0,0.05)',
-          borderRadius:16,
-          padding:24,
-          marginBottom:28,
-        }}
-      >
-        <h3
-          style={{
-            marginTop:0,
-            marginBottom:18,
-          }}
-        >
-          Search Prompt Library
-        </h3>
-
-        <div
-          style={{
-            display:'grid',
-            gridTemplateColumns:'2fr 1fr 1fr auto',
-            gap:16,
-          }}
-        >
-          <input
-            placeholder="Search prompts..."
-            style={inputStyle}
-          />
-
-          <select style={inputStyle}>
-            <option>All Categories</option>
-            <option>Drafting</option>
-            <option>Research</option>
-            <option>Cross Examination</option>
-            <option>Strategy</option>
-          </select>
-
-          <select style={inputStyle}>
-            <option>All Types</option>
-            <option>Public</option>
-            <option>Private</option>
-            <option>Team</option>
-          </select>
-
-          <button
-            style={{
-              border:'none',
-              background: '#3b82f6',
-              color:'#fff',
-              borderRadius:10,
-              padding:'0 24px',
-              cursor:'pointer',
-              fontWeight:600,
-            }}
-          >
-            Search
-          </button>
-        </div>
-      </div>
-
-      {/* ================= DASHBOARD ================= */}
-
-      <div
-        style={{
-          display:'grid',
-          gridTemplateColumns:'repeat(4,1fr)',
-          gap:18,
-          marginBottom:30,
-        }}
-      >
-        {stats.map((item)=>(
-          <div
-            key={item.title}
-            style={{
-              background: 'rgba(255,255,255,0.4)',
-              border: '1px solid rgba(0,0,0,0.05)',
-              borderRadius:16,
-              padding:20,
-            }}
-          >
-            <div
-              style={{
-                display:'flex',
-                justifyContent:'space-between',
-              }}
-            >
-              <span
-                style={{
-                  color:'#64748b',
-                  fontSize:13,
-                }}
-              >
-                {item.title}
-              </span>
-
-              <i
-                className={`ti ${item.icon}`}
-                style={{
-                  color:item.color,
-                  fontSize:22,
-                }}
-              />
-            </div>
-
-            <div
-              style={{
-                marginTop:18,
-                fontSize:30,
-                fontWeight:700,
-                color:'#0f172a',
-              }}
-            >
-              {item.value}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* ================= CATEGORIES ================= */}
-
-      <div
-        style={{
-          marginBottom:30,
-        }}
-      >
-        <h3
-          style={{
-            marginBottom:20,
-          }}
-        >
-          Prompt Categories
-        </h3>
-
-        <div
-          style={{
-            display:'grid',
-            gridTemplateColumns:'repeat(3,1fr)',
-            gap:18,
-          }}
-        >
-          {categories.map((item)=>(
-            <CategoryCard
-              key={item.title}
-              {...item}
-            />
-          ))}
-        </div>
-      </div>
-            {/* ================= FEATURED PROMPTS ================= */}
-
-      <div
-        style={{
-          marginBottom: 30,
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 18,
-          }}
-        >
-          <h3
-            style={{
-              margin: 0,
-            }}
-          >
-            ⭐ Featured AI Prompts
-          </h3>
-
-          <button style={primaryButton}>
-            View All
-          </button>
-        </div>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2,1fr)',
-            gap: 20,
-          }}
-        >
-          <PromptCard
-            title="Interim Maintenance Petition"
-            category="Drafting"
-            uses="2.4K Uses"
-            rating="4.9"
-          />
-
-          <PromptCard
-            title="Cross Examination Generator"
-            category="Courtroom"
-            uses="1.8K Uses"
-            rating="4.8"
-          />
-
-          <PromptCard
-            title="Case Strategy Builder"
-            category="Strategy"
-            uses="1.5K Uses"
-            rating="4.7"
-          />
-
-          <PromptCard
-            title="Legal Research Assistant"
-            category="Research"
-            uses="3.1K Uses"
-            rating="5.0"
-          />
-        </div>
-      </div>
-
-      {/* ================= MY PROMPTS ================= */}
-
-      <div
-        style={{
-          marginBottom: 30,
-        }}
-      >
-        <h3
-          style={{
-            marginBottom: 18,
-          }}
-        >
-          📚 My Prompt Collection
-        </h3>
-
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            overflow: 'hidden',
-          }}
-        >
-          {[
-            [
-              'Maintenance Calculator',
-              'Drafting',
-              'Yesterday',
-            ],
-            [
-              'Judge Behaviour Analysis',
-              'Judge Insights',
-              '2 Days Ago',
-            ],
-            [
-              'Cross Examination',
-              'Litigation',
-              'Last Week',
-            ],
-            [
-              'Settlement Negotiation',
-              'Strategy',
-              'Last Week',
-            ],
-          ].map((row) => (
-            <PromptRow
-              key={row[0]}
-              title={row[0]}
-              category={row[1]}
-              updated={row[2]}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* ================= FAVORITES & MOST USED ================= */}
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 24,
-          marginBottom: 30,
-        }}
-      >
-        {/* Favourite */}
-
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            padding: 22,
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-              marginBottom: 18,
-            }}
-          >
-            ❤️ Favourite Prompts
-          </h3>
-
-          {[
-            'Maintenance Draft',
-            'Custody Petition',
-            'Evidence Summary',
-            'Client Meeting Notes',
-            'Income Analysis',
-          ].map((item) => (
-            <div
-              key={item}
-              style={{
-                padding: '12px 0',
-                borderBottom: '1px solid rgba(0,0,0,0.05)',
-              }}
-            >
-              ⭐ {item}
-            </div>
-          ))}
-        </div>
-
-        {/* Most Used */}
-
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            padding: 22,
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-              marginBottom: 18,
-            }}
-          >
-            🔥 Most Used
-          </h3>
-
-          {[
-            {
-              title: 'Legal Research',
-              count: '324 Uses',
-            },
-            {
-              title: 'Draft Petition',
-              count: '280 Uses',
-            },
-            {
-              title: 'Cross Examination',
-              count: '248 Uses',
-            },
-            {
-              title: 'Case Summary',
-              count: '216 Uses',
-            },
-            {
-              title: 'Judge Analysis',
-              count: '194 Uses',
-            },
-          ].map((item) => (
-            <MostUsedCard
-              key={item.title}
-              title={item.title}
-              count={item.count}
-            />
-          ))}
-        </div>
-      </div>
-            {/* ================= AI PROMPT GENERATOR ================= */}
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1.3fr .7fr',
-          gap: 24,
-          marginBottom: 30,
-        }}
-      >
-        {/* Generator */}
-
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            padding: 24,
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-              marginBottom: 18,
-            }}
-          >
-            🤖 AI Prompt Generator
-          </h3>
-
-          <textarea
-            rows={6}
-            placeholder="Example: Create a prompt to draft an Interim Maintenance Petition considering income affidavit, Rajnesh v. Neha and financial disclosures..."
-            style={{
-              ...inputStyle,
-              height: 'auto',
-              resize: 'vertical',
-              paddingTop: 14,
-            }}
-          />
-
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              marginTop: 18,
-            }}
-          >
-            <button style={primaryButton}>
-              Generate Prompt
-            </button>
-
-            <button style={secondaryButton}>
-              Improve Prompt
-            </button>
-          </div>
-
-          <div
-            style={{
-              marginTop: 24,
-              background: 'rgba(255,255,255,0.6)',
-              borderRadius: 12,
-              padding: 18,
-            }}
-          >
-            <strong>Generated Preview</strong>
-
-            <p
-              style={{
-                marginTop: 12,
-                color: '#475569',
-                lineHeight: 1.8,
-              }}
-            >
-              Generate a legally accurate Interim Maintenance Petition
-              using the client's income affidavit, financial disclosures,
-              supporting documents and latest Supreme Court precedents.
-              Structure the petition according to Family Court practice
-              and include persuasive legal reasoning.
-            </p>
-          </div>
-        </div>
-
-        {/* AI Stats */}
-
-        <div
-          style={{
-            display: 'grid',
-            gap: 18,
-          }}
-        >
-          <GeneratorCard
-            title="Generated Today"
-            value="28"
-            color="#2563eb"
-          />
-
-          <GeneratorCard
-            title="Average Rating"
-            value="4.9 ★"
-            color="#16a34a"
-          />
-
-          <GeneratorCard
-            title="AI Accuracy"
-            value="97%"
-            color="#7c3aed"
-          />
-
-          <GeneratorCard
-            title="Templates"
-            value="486"
-            color="#ea580c"
-          />
-        </div>
-      </div>
-
-      {/* ================= TEAM LIBRARY ================= */}
-
-      <div
-        style={{
-          marginBottom: 30,
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 18,
-          }}
-        >
-          <h3
-            style={{
-              margin: 0,
-            }}
-          >
-            👥 Team Shared Prompts
-          </h3>
-
-          <button style={primaryButton}>
-            Share Prompt
-          </button>
-        </div>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3,1fr)',
-            gap: 18,
-          }}
-        >
-          <TeamPromptCard
-            title="Maintenance Master Prompt"
-            author="Parth"
-          />
-
-          <TeamPromptCard
-            title="Cross Examination AI"
-            author="Rahul"
-          />
-
-          <TeamPromptCard
-            title="Judge Insight Prompt"
-            author="Admin"
-          />
-        </div>
-      </div>
-
-      {/* ================= VARIABLES ================= */}
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 24,
-          marginBottom: 30,
-        }}
-      >
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            padding: 22,
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-              marginBottom: 18,
-            }}
-          >
-            ⚙️ Prompt Variables
-          </h3>
-
-          <div
-            style={{
-              display: 'grid',
-              gap: 14,
-            }}
-          >
-            <VariableCard variable="{{ClientName}}" />
-
-            <VariableCard variable="{{CaseNumber}}" />
-
-            <VariableCard variable="{{JudgeName}}" />
-
-            <VariableCard variable="{{CourtName}}" />
-
-            <VariableCard variable="{{Income}}" />
-
-            <VariableCard variable="{{Opponent}}" />
-
-            <VariableCard variable="{{Evidence}}" />
-          </div>
-        </div>
-
-        {/* Recent */}
-
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            padding: 22,
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-              marginBottom: 18,
-            }}
-          >
-            🆕 Recently Added
-          </h3>
-
-          <RecentPromptCard
-            title="AI Case Timeline"
-            date="Today"
-          />
-
-          <RecentPromptCard
-            title="Maintenance Calculator"
-            date="Yesterday"
-          />
-
-          <RecentPromptCard
-            title="Income Affidavit Review"
-            date="2 Days Ago"
-          />
-
-          <RecentPromptCard
-            title="Evidence Intelligence"
-            date="Last Week"
-          />
-
-          <RecentPromptCard
-            title="Client Meeting Summary"
-            date="Last Week"
-          />
-        </div>
-      </div>
-            {/* ================= EXPORT & SHARE ================= */}
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 24,
-          marginBottom: 30,
-        }}
-      >
-        {/* Export */}
-
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            padding: 22,
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-            }}
-          >
-            📤 Export Prompt Library
-          </h3>
-
-          <p
-            style={{
-              color: '#64748b',
-              lineHeight: 1.7,
-            }}
-          >
-            Export your prompts, templates and AI prompt collections
-            for backup or sharing with your team.
-          </p>
-
-          <div
-            style={{
-              display: 'grid',
-              gap: 12,
-              marginTop: 20,
-            }}
-          >
-            <button style={primaryButton}>
-              Export PDF
-            </button>
-
-            <button style={primaryButton}>
-              Export Word
-            </button>
-
-            <button style={primaryButton}>
-              Export JSON
-            </button>
-          </div>
-        </div>
-
-        {/* AI Suggestions */}
-
-        <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-            border: '1px solid rgba(0,0,0,0.05)',
-            borderRadius: 16,
-            padding: 22,
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-            }}
-          >
-            🤖 AI Suggestions
-          </h3>
-
-          <div
-            style={{
-              display: 'grid',
-              gap: 14,
-            }}
-          >
-            <RecommendationCard
-              title="Suggested Prompt"
-              value="Maintenance Draft Generator"
-            />
-
-            <RecommendationCard
-              title="Trending"
-              value="Cross Examination AI"
-            />
-
-            <RecommendationCard
-              title="Improve Prompt"
-              value="Judge Insight Prompt"
-            />
-
-            <RecommendationCard
-              title="Recommended Category"
-              value="Evidence Intelligence"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* ================= AI SUMMARY ================= */}
-
-      <div
-        style={{
-          background: 'rgba(59, 130, 246, 0.05)',
-          border: '1px solid rgba(59, 130, 246, 0.1)',
-          borderRadius: 16,
-          padding: 22,
-          marginBottom: 30,
-        }}
-      >
-        <h3
-          style={{
-            marginTop: 0,
-            color: '#1d4ed8',
-          }}
-        >
-          🧠 AI Prompt Summary
-        </h3>
-
-        <p
-          style={{
-            marginBottom: 0,
-            lineHeight: 1.8,
-            color: '#334155',
-          }}
-        >
-          Your Prompt Library currently contains 486 prompts with an
-          average AI success rate of 97%. The most frequently used
-          prompts are related to drafting, legal research and
-          cross-examination. AI recommends creating reusable prompt
-          templates with dynamic variables to improve productivity.
-        </p>
-      </div>
-
+      <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 13, marginBottom: 4 }}>{item.title}</div>
+      <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.5 }}>{item.desc}</div>
     </div>
   )
-}
-
-/* ================= HELPER COMPONENTS ================= */
-
-function CategoryCard({
-  title,
-  subtitle,
-  icon,
-  color,
-}: {
-  title: string
-  subtitle: string
-  icon: string
-  color: string
-}) {
-  return (
-    <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-        border: '1px solid rgba(0,0,0,0.05)',
-        borderRadius: 16,
-        padding: 20,
-      }}
-    >
-      <i
-        className={`ti ${icon}`}
-        style={{
-          fontSize: 30,
-          color,
-        }}
-      />
-
-      <h3
-        style={{
-          marginTop: 16,
-          marginBottom: 8,
-        }}
-      >
-        {title}
-      </h3>
-
-      <div style={{ color: '#64748b' }}>
-        {subtitle}
-      </div>
-    </div>
-  )
-}
-
-function PromptCard({
-  title,
-  category,
-  uses,
-  rating,
-}: {
-  title: string
-  category: string
-  uses: string
-  rating: string
-}) {
-  return (
-    <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-        border: '1px solid rgba(0,0,0,0.05)',
-        borderRadius: 16,
-        padding: 20,
-      }}
-    >
-      <h3>{title}</h3>
-
-      <div style={{ color: '#64748b' }}>
-        {category}
-      </div>
-
-      <div
-        style={{
-          marginTop: 14,
-          display: 'flex',
-          justifyContent: 'space-between',
-        }}
-      >
-        <span>{uses}</span>
-        <strong>{rating} ⭐</strong>
-      </div>
-    </div>
-  )
-}
-
-function PromptRow({
-  title,
-  category,
-  updated,
-}: {
-  title: string
-  category: string
-  updated: string
-}) {
-  return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '2fr 1fr 1fr auto',
-        padding: 18,
-        borderBottom: '1px solid rgba(0,0,0,0.05)',
-      }}
-    >
-      <strong>{title}</strong>
-      <span>{category}</span>
-      <span>{updated}</span>
-
-      <button
-        style={{
-          border: 'none',
-          background: 'rgba(59, 130, 246, 0.05)',
-          color: '#3b82f6',
-          borderRadius: 8,
-          padding: '6px 12px',
-          cursor: 'pointer',
-        }}
-      >
-        Open
-      </button>
-    </div>
-  )
-}
-
-function MostUsedCard({
-  title,
-  count,
-}: {
-  title: string
-  count: string
-}) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        padding: '12px 0',
-        borderBottom: '1px solid rgba(0,0,0,0.05)',
-      }}
-    >
-      <span>{title}</span>
-      <strong>{count}</strong>
-    </div>
-  )
-}
-
-function GeneratorCard({
-  title,
-  value,
-  color,
-}: {
-  title: string
-  value: string
-  color: string
-}) {
-  return (
-    <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-        border: '1px solid rgba(0,0,0,0.05)',
-        borderRadius: 14,
-        padding: 18,
-      }}
-    >
-      <div
-        style={{
-          color: '#64748b',
-        }}
-      >
-        {title}
-      </div>
-
-      <div
-        style={{
-          marginTop: 12,
-          fontSize: 18,
-          fontWeight: 700,
-          color,
-        }}
-      >
-        {value}
-      </div>
-    </div>
-  )
-}
-
-function TeamPromptCard({
-  title,
-  author,
-}: {
-  title: string
-  author: string
-}) {
-  return (
-    <div
-      className="glass-card"
-      style={{
-        background: 'rgba(255,255,255,0.4)',
-        border: '1px solid rgba(0,0,0,0.05)',
-        borderRadius: 14,
-        padding: 20,
-      }}
-    >
-      <h4>{title}</h4>
-      <div style={{ color: '#64748b' }}>
-        Shared by {author}
-      </div>
-    </div>
-  )
-}
-
-function VariableCard({
-  variable,
-}: {
-  variable: string
-}) {
-  return (
-    <div
-      style={{
-        background: 'rgba(255,255,255,0.6)',
-        borderRadius: 10,
-        padding: 14,
-        fontFamily: 'monospace',
-        fontWeight: 600,
-      }}
-    >
-      {variable}
-    </div>
-  )
-}
-
-function RecentPromptCard({
-  title,
-  date,
-}: {
-  title: string
-  date: string
-}) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        padding: '12px 0',
-        borderBottom: '1px solid rgba(0,0,0,0.05)',
-      }}
-    >
-      <span>{title}</span>
-      <span style={{ color: '#64748b' }}>
-        {date}
-      </span>
-    </div>
-  )
-}
-
-function RecommendationCard({
-  title,
-  value,
-}: {
-  title: string
-  value: string
-}) {
-  return (
-    <div
-      style={{
-        borderBottom: '1px solid rgba(0,0,0,0.05)',
-        paddingBottom: 12,
-      }}
-    >
-      <div
-        style={{
-          color: '#64748b',
-          fontSize: 13,
-        }}
-      >
-        {title}
-      </div>
-
-      <strong>{value}</strong>
-    </div>
-  )
-}
-
-/* ================= STYLES ================= */
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  height: 44,
-  border: '1px solid rgba(0,0,0,0.05)',
-  borderRadius: 10,
-  padding: '0 14px',
-  outline: 'none',
-  fontSize: 14,
-  boxSizing: 'border-box',
-}
-
-const primaryButton: React.CSSProperties = {
-  border: 'none',
-  background: '#3b82f6',
-  color: '#fff',
-  borderRadius: 10,
-  padding: '10px 18px',
-  cursor: 'pointer',
-  fontWeight: 600,
-}
-
-const secondaryButton: React.CSSProperties = {
-  border: '1px solid rgba(0,0,0,0.05)',
-  background: 'rgba(255,255,255,0.4)',
-  color: '#334155',
-  borderRadius: 10,
-  padding: '10px 18px',
-  cursor: 'pointer',
-  fontWeight: 600,
 }
